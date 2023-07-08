@@ -717,6 +717,21 @@ files = [
 ]
 
 [[package]]
+name = "pyproject-flake8"
+version = "6.0.0.post1"
+description = "pyproject-flake8 (`pflake8`), a monkey patching wrapper to connect flake8 with pyproject.toml configuration"
+optional = false
+python-versions = ">=3.8.1"
+files = [
+    {file = "pyproject-flake8-6.0.0.post1.tar.gz", hash = "sha256:d43421caca0ef8a672874405fe63c722b0333e3c22c41648c6df60f21bab2b6b"},
+    {file = "pyproject_flake8-6.0.0.post1-py3-none-any.whl", hash = "sha256:bdc7ca9b967b9724983903489b8943b72c668178fb69f03e8774ec74f6a13782"},
+]
+
+[package.dependencies]
+flake8 = "6.0.0"
+tomli = {version = "*", markers = "python_version < \"3.11\""}
+
+[[package]]
 name = "pytest"
 version = "7.4.0"
 description = "pytest: simple powerful testing with Python"
@@ -969,4 +984,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "803c427c5ac4d057d51f072a37e9b251c867dbf6e9fea2941967a3436faae32f"
+content-hash = "2a0a24e07c6315be8f15f4e3141553f7ff9d273ad85f757e8f627f3585d620cd"

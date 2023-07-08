@@ -35,7 +35,7 @@ jobs:
 
       - name: Run flake8
         run: |
-          poetry run flake8
+          poetry run pflake8
 
       - name: Run pytest
         run: |
