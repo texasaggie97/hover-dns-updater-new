@@ -23,6 +23,8 @@ jobs:
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: 1.5.1
+      - name: Install dependencies
+        run: poetry install
       - name: Run black
         run: poetry run black .
       - name: Run flake8
