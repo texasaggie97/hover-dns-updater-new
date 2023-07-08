@@ -25,7 +25,7 @@ jobs:
 
       - name: Install poetry dependencies
         run: |
-          poetry install --no-root
+          poetry install
 
       - name: Run black
         run: |

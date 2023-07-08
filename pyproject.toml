@@ -5,7 +5,6 @@ description = "Update DNS entry on hover.com"
 authors = ["Mark Silva <github3@markesilva.com>"]
 license = "GPL"
 readme = "README.md"
-packages = [{include = "hover_dns_updater"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
