@@ -118,7 +118,7 @@ class HoverConfig(object):
         return ret_str
 
 
-class HoverException(Exception):
+class HoverError(Exception):
     pass
 
 
@@ -154,7 +154,7 @@ class HoverAPI(object):
         )
 
         if not r.ok or "hoverauth" not in r.cookies:
-            raise HoverException(r)
+            raise HoverError(r)
         self._cookies["hoverauth"] = r.cookies["hoverauth"]
         self._auth_timestamp = datetime.datetime.now()
 
@@ -196,11 +196,11 @@ class HoverAPI(object):
         url = "https://www.hover.com/api/{0}".format(resource)
         r = requests.request(method, url, data=data, cookies=self._cookies)
         if not r.ok:
-            raise HoverException(r)
+            raise HoverError(r)
         if r.content:
             body = r.json()
             if "succeeded" not in body or body["succeeded"] is not True:
-                raise HoverException(body)
+                raise HoverError(body)
             return body
 
 
