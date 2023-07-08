@@ -8,6 +8,7 @@
 | --- | --- |
 | Info | Hover DNS Updater for Dynamic IP. See [GitHub](https://github.com/texasaggie97/hover-dns-updater/)  for the latest source. |
 | Author | Mark Silva, based on a script from [GitHub](https://gist.github.com/andybarilla/b0dd93e71ff18303c059) by Andrew Barilla |
+| lmann99 | Kept it running while I did not have access to github and added 2FA support |
 
 About
 =====
@@ -16,6 +17,11 @@ About
 DNS records based on the external IP address. **hover-dns-updater** can
 do this one time or can run continuously checking after a certain amount
 of time.
+
+I lost access to my GitHub account and they were not able to help me recover
+it. The old account has been renamed `texasaggie97-zz` and I have back 
+`texasaggie97`. Given this though, the original repo name has been retired 
+and cannot be used, so I have renamed the repo to `hover-dns-updater-new` :(
 
 Installation
 ============
@@ -85,9 +91,7 @@ Create Docker container
 RancherOS
 ---------
 
-I am using RancherOS to host and manage Docker running in a lightweight
-VM on FreeNAS. Here are the docker-compose.yml and rancher-compose.yml
-to easily recreate the container.
+Here are the docker-compose.yml and rancher-compose.yml to easily recreate the container.
 
 ### docker-compose.yml:
 
@@ -151,6 +155,7 @@ to easily recreate the container.
 >             scale: 1
 >             start_on_create: true
 
+
 Contributing
 ============
 
@@ -160,11 +165,11 @@ Bugs / Feature Requests
 =======================
 
 To report a bug or submit a feature request, please use the [GitHub
-issues page](https://github.com/texasaggie97/hover-dns-updater/issues).
+issues page](https://github.com/texasaggie97/hover-dns-updater-new/issues).
 
 License
 =======
 
 **hover-dns-updater** is licensed under an GPL-style license ([see
-LICENSE](https://github.com/texasaggie97/hover-dns-updater/blob/master/LICENSE)).
+LICENSE](https://github.com/texasaggie97/hover-dns-updater-new/blob/master/LICENSE)).
 Other incorporated projects may be licensed under different licenses.
