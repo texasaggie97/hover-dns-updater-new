@@ -21,6 +21,8 @@ jobs:
           python -m pip install --upgrade pip
       - name: Setup poetry
         uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: 1.5.1
       - name: Run black
         run: poetry run black .
       - name: Run flake8
