@@ -39,6 +39,10 @@ default_config = {
 }
 
 
+def test_pass():
+    print("PASS!")
+
+
 def configure_logging(lvl=logging.INFO, logfile=None):
     root = logging.getLogger()
     root.setLevel(lvl)
