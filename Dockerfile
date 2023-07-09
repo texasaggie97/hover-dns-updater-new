@@ -15,6 +15,7 @@ RUN pip install -U pip && \
 ENV NAME hover-dns-updater
 
 FROM base as test
+ADD requirements-dev.txt /hover-dns-updater/
 RUN pip install -r requirements-dev.txt && \
     pytest hover-dns-updater.py
 
