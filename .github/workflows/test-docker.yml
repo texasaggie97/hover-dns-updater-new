@@ -29,11 +29,11 @@ jobs:
 
       - name: Generate requirements.txt file
         run: |
-          poetry export -f requirements.txt > requirements.txt --without-hashes
+          poetry export -f requirements.txt --without-hashes > tee requirements.txt
 
       - name: Generate requirements-dev.txt file
         run: |
-          poetry export -f requirements.txt > requirements-dev.txt --without-hashes --with=dev
+          poetry export -f requirements.txt --without-hashes --with=dev > tee requirements-dev.txt
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
