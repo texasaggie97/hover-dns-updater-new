@@ -8,7 +8,7 @@ WORKDIR /hover-dns-updater
 ADD hover-dns-updater.py hover-update.cfg requirements.txt /hover-dns-updater/
 
 # Install any needed packages specified in requirements.txt
-RUN pip install -U pip &&
+RUN pip install -U pip && \
     pip install -r requirements.txt
 
 # Define environment variable
