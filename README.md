@@ -1,7 +1,7 @@
 | | |
 | --- | --- |
-| master branch status | ![Build Status - master branch](https://img.shields.io/travis/texasaggie97/hover-dns-updater.svg "Build Status - master branch") ![Documentation Status - master branch](https://readthedocs.org/projects/hover-dns-updater/badge/?version=latest "Documentation Status - master branch") ![GPL License](https://img.shields.io/badge/License-GPL-yellow.svg "GPL License") ![Test Coverage - master branch](https://coveralls.io/repos/github/ni/nimi-python/badge.svg?branch=master&dummy=no_cache_please_1 "Test Coverage - master branch") |
-| GitHub status | ![Open Issues + Pull Requests](https://img.shields.io/github/issues/texasaggie97/hover-dns-updater.svg "Open Issues + Pull Requests") ![Open Pull Requests](https://img.shields.io/github/issues-pr/texasaggie97/hover-dns-updater.svg "Open Pull Requests") |
+| master branch status | ![Test Status - main branch](https://github.com/texasaggie97/hover-dns-updater-new/actions/workflows/test-packages/badge.svg "Test Status - main branch") ![Documentation Status - master branch](https://readthedocs.org/projects/hover-dns-updater/badge/?version=latest "Documentation Status - master branch") ![GPL License](https://img.shields.io/badge/License-GPL-yellow.svg "GPL License") ![Test Coverage - main branch](https://coveralls.io/repos/github/texasaggie97/hover-dns-updater-new/badge.svg?branch=main&dummy=no_cache_please_1 "Test Coverage - main branch") |
+| GitHub status | ![Open Issues + Pull Requests](https://img.shields.io/github/issues/texasaggie97/hover-dns-updater-new.svg "Open Issues + Pull Requests") ![Open Pull Requests](https://img.shields.io/github/issues-pr/texasaggie97/hover-dns-updater-new.svg "Open Pull Requests") |
 | Versions | 0.1.0.dev0 |
 
 | | |
