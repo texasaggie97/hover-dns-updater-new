@@ -1,6 +1,6 @@
 | | |
 | --- | --- |
-| master branch status | ![Test Status - main branch](https://github.com/texasaggie97/hover-dns-updater-new/actions/workflows/test-packages/badge.svg "Test Status - main branch") ![Documentation Status - master branch](https://readthedocs.org/projects/hover-dns-updater/badge/?version=latest "Documentation Status - master branch") ![GPL License](https://img.shields.io/badge/License-GPL-yellow.svg "GPL License") ![Test Coverage - main branch](https://coveralls.io/repos/github/texasaggie97/hover-dns-updater-new/badge.svg?branch=main&dummy=no_cache_please_1 "Test Coverage - main branch") |
+| master branch status | ![Test Status - main branch](https://github.com/texasaggie97/hover-dns-updater-new/actions/workflows/test-packages.yml/badge.svg "Test Status - main branch") ![GPL License](https://img.shields.io/badge/License-GPL-yellow.svg "GPL License") ![Test Coverage - main branch](https://coveralls.io/repos/github/texasaggie97/hover-dns-updater-new/badge.svg?branch=main&dummy=no_cache_please_1 "Test Coverage - main branch") |
 | GitHub status | ![Open Issues + Pull Requests](https://img.shields.io/github/issues/texasaggie97/hover-dns-updater-new.svg "Open Issues + Pull Requests") ![Open Pull Requests](https://img.shields.io/github/issues-pr/texasaggie97/hover-dns-updater-new.svg "Open Pull Requests") |
 | Versions | 0.1.0.dev0 |
 
@@ -29,17 +29,17 @@ Installation
 Prerequisites:
 --------------
 
--   Python 3  
-    -   [Download](https://www.python.org/downloads/)
+- Python 3.10
+    - [Download](https://www.python.org/downloads/)
 
--   pip3  
-    -   Linux - sudo apt-get install -y python3-pip
-    -   Windows - python -m ensurepip --upgrade
+- pip
+    - Linux - `sudo apt-get install -y python3-pip`
+    - Windows - `python -m ensurepip --upgrade`
+    - `pip install -U pip`
 
--   Installed packages  
-    -   requests  
-        -   Linux - sudo pip3 install --upgrade requests
-        -   Windows - pip install --upgrade requests
+- Poetry
+    - `pip install -U poetry==1.5.1`
+    - `poetry install` - this will create the poetry venv with all dependencies installed
 
 Hover TOPT Key:
 ---------------
@@ -160,6 +160,12 @@ Contributing
 ============
 
 Contributions are welcome!
+
+## Commands to use
+
+- `poetry run black .` - linter, may update formatting if required
+- `poetry run flake8`
+- `poetry run pytest` - only test currently is a simple one that will pass if the file is loadable
 
 Bugs / Feature Requests
 =======================
