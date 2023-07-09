@@ -15,7 +15,7 @@ RUN pip install -U pip && \
 ENV NAME hover-dns-updater
 
 FROM base as test
-RUN pip intstall -r requirements-dev.txt && \
+RUN pip install -r requirements-dev.txt && \
     pytest hover-dns-updater.py
 
 FROM base as production
