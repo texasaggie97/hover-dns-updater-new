@@ -29,7 +29,11 @@ jobs:
 
       - name: Generate requirements.txt file
         run: |
-          poetry export -f requirements.txt > requirements.txt
+          poetry export -f requirements.txt > requirements.txt --without-hashes
+
+      - name: Generate requirements-dev.txt file
+        run: |
+          poetry export -f requirements.txt > requirements-dev.txt --without-hashes --with=dev
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -49,7 +53,5 @@ jobs:
           context: .
           load: true
           tags: ${{ env.TEST_TAG }}
+          target: test
 
-      - name: Test
-        run: |
-          docker run --rm ${{ env.TEST_TAG }}
