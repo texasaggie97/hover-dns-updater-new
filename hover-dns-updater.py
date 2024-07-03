@@ -97,7 +97,7 @@ class HoverConfig(object):
         if self.LOGFILE == "ENV":
             self.LOGFILE = os.environ["LOGFILE"]
         if self.TOPTKEY == "ENV":
-            self.LOGFILE = os.environ["TOPTKEY"]
+            self.TOPTKEY = os.environ["TOPTKEY"]
         if len(self.DNS_IDS) == 1 and self.DNS_IDS[0] == "ENV":
             self.DNS_IDS = []
             i = 1
@@ -149,7 +149,8 @@ class HoverAPI(object):
             "https://www.hover.com/signin/auth.json", json=params, cookies=self._cookies
         )
 
-        topt = pyotp.TOTP(self._config.TOPTKEY)
+        otp = self._config.TOPTKEY
+        topt = pyotp.TOTP(otp + "=" * (-len(otp) % 8))
         params = {"code": topt.now()}
         r = requests.post(
             "https://www.hover.com/signin/auth2.json",
