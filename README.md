@@ -86,7 +86,7 @@ Install Ubuntu service:
 Create Docker container
 -----------------------
 
->     docker build -t hover-dns-updater . ; docker tag hover-dns-updater texasaggie97/hover-dns-updater:latest ; docker push texasaggie97/hover-dns-updater
+>     docker build -t hover-dns-updater . ; docker tag hover-dns-updater texasaggie97/hover-dns-updater:latest texasaggie97/hover-dns-updater:vX.X.X ; docker push texasaggie97/hover-dns-updater
 
 RancherOS
 ---------
@@ -102,33 +102,12 @@ Here are the docker-compose.yml and rancher-compose.yml to easily recreate the c
 >             driver: rancher-nfs
 >
 >     services:
->         alarmserver:
->             image: texasaggie97/alarmserver
->             environment:
->                 ALARMCODE: "1234"
->                 CALLBACKURL_BASE: "https://graph.api.smartthings.com/api/smartapps/installations"
->                 CALLBACKURL_APP_ID: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
->                 CALLBACKURL_ACCESS_TOKEN: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
->                 LOGFILE: "/logs/docker-alarmserver.log"
->                 ENVISALINKHOST: "192.168.0.149"
->             stdin_open: true
->             working_dir: /alarmserver
->             volumes:
->             - logs:/logs
->             tty: true
->             ports:
->             - 8111:8111/tcp
->             command:
->             - python
->             - alarmserver.py
->             labels:
->                 io.rancher.container.pull_image: always
->
 >         hover-dns-updater:
 >             image: texasaggie97/hover-dns-updater
 >             environment:
 >                 USERNAME: "username"
 >                 PASSWORD: "password"
+>                 TOPTKEY: "secret code"
 >                 DNS1: "dns00000000"
 >                 DNS2: "dns00000001"
 >                 LOGFILE: "/logs/docker-hover-dns-updater.log"
