@@ -2,7 +2,7 @@
 | --- | --- |
 | main branch status | ![Python test Status - main branch](https://github.com/texasaggie97/hover-dns-updater-new/actions/workflows/test-package.yml/badge.svg "Python test Status - main branch") ![Docker test Status - main branch](https://github.com/texasaggie97/hover-dns-updater-new/actions/workflows/test-docker.yml/badge.svg "Docker test Status - main branch") ![GPL License](https://img.shields.io/badge/License-GPL-yellow.svg "GPL License") ![Test Coverage - main branch](https://coveralls.io/repos/github/texasaggie97/hover-dns-updater-new/badge.svg?branch=main&dummy=no_cache_please_1 "Test Coverage - main branch") |
 | GitHub status | ![Open Issues + Pull Requests](https://img.shields.io/github/issues/texasaggie97/hover-dns-updater-new.svg "Open Issues + Pull Requests") ![Open Pull Requests](https://img.shields.io/github/issues-pr/texasaggie97/hover-dns-updater-new.svg "Open Pull Requests") |
-| Versions | 1.0.0 |
+| Versions | 1.0.1 |
 
 | | |
 | --- | --- |

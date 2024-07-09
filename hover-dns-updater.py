@@ -296,6 +296,9 @@ def _main(config):
         except KeyboardInterrupt:
             logging.info("Exiting from Control-C")
             break
+        except Exception as e:
+            logging.error(e)
+            break
 
 
 def main():  # pragma: no cover
