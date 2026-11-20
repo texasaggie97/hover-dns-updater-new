@@ -131,7 +131,6 @@ class HoverAPI(object):
         self._config = config
         self._current_dns_ips = {}
         self.get_auth()
-        self.get_current_ips()
 
     def get_auth(self):
         logging.info("Logging in")
@@ -296,6 +295,7 @@ def _parse_args(argv):
 
 def _main(config):
     client = None
+    dns_initialized = False
     retry_delay = 10
     retry_attempt = 0
     phase = "initialization"
@@ -304,6 +304,10 @@ def _main(config):
             if client is None:
                 phase = "initialization"
                 client = HoverAPI(config)
+            if not dns_initialized:
+                phase = "DNS initialization"
+                client.get_current_ips()
+                dns_initialized = True
             phase = "update"
             client.update()
             if retry_attempt:
@@ -325,7 +329,7 @@ def _main(config):
         except requests.RequestException as e:
             if not config.SERVICE:
                 logging.error(e)
-                break
+                return 1
             retry_attempt += 1
             logging.error(
                 "Transient network failure during %s (attempt %s); retrying in %s seconds: %s",
@@ -338,7 +342,8 @@ def _main(config):
             retry_delay = min(retry_delay * 2, 300)
         except Exception as e:
             logging.error(e)
-            break
+            return 1
+    return 0
 
 
 def main():  # pragma: no cover
