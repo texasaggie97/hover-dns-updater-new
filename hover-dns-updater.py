@@ -131,13 +131,12 @@ class HoverAPI(object):
         self._config = config
         self._current_dns_ips = {}
         self.get_auth()
-        self.get_current_ips()
 
     def get_auth(self):
         logging.info("Logging in")
 
         # Getting required cookies "hover_session" and "hoverauth"
-        r = requests.get("https://www.hover.com/signin")
+        r = requests.get("https://www.hover.com/signin", timeout=(10, 30))
         self._cookies = {"hover_session": r.cookies["hover_session"]}
 
         params = {
@@ -146,7 +145,10 @@ class HoverAPI(object):
             "token": None,
         }
         r = requests.post(
-            "https://www.hover.com/signin/auth.json", json=params, cookies=self._cookies
+            "https://www.hover.com/signin/auth.json",
+            json=params,
+            cookies=self._cookies,
+            timeout=(10, 30),
         )
 
         otp = self._config.TOPTKEY
@@ -156,17 +158,23 @@ class HoverAPI(object):
             "https://www.hover.com/signin/auth2.json",
             json=params,
             cookies=self._cookies,
+            timeout=(10, 30),
         )
 
         if not r.ok or "hoverauth" not in r.cookies:
             raise HoverError(r)
         self._cookies["hoverauth"] = r.cookies["hoverauth"]
         self._auth_timestamp = datetime.datetime.now()
+        logging.info("Hover authentication succeeded")
 
     def check_auth(self):
         td = datetime.datetime.now() - self._auth_timestamp
         # We will cache the login authorization for two hours
         if td.total_seconds() > (2 * 60 * 60):
+            logging.info(
+                "Refreshing Hover session after %.0f seconds (two-hour threshold)",
+                td.total_seconds(),
+            )
             self.get_auth()
 
     def get_current_ips(self):
@@ -179,7 +187,9 @@ class HoverAPI(object):
                     self._current_dns_ips[entry["id"]] = entry["content"]
 
     def update(self):
-        current_external_ip = requests.get("https://api.ipify.org").text
+        current_external_ip = requests.get(
+            "https://api.ipify.org", timeout=(10, 30)
+        ).text
         logging.info("Updating - Current external IP = {0}".format(current_external_ip))
         for dns_id in self._current_dns_ips:
             logging.debug("    {0} = {1}".format(dns_id, self._current_dns_ips[dns_id]))
@@ -199,7 +209,9 @@ class HoverAPI(object):
         )
         self.check_auth()
         url = "https://www.hover.com/api/{0}".format(resource)
-        r = requests.request(method, url, data=data, cookies=self._cookies)
+        r = requests.request(
+            method, url, data=data, cookies=self._cookies, timeout=(10, 30)
+        )
         if not r.ok:
             raise HoverError(r)
         if r.content:
@@ -282,11 +294,29 @@ def _parse_args(argv):
 
 
 def _main(config):
-    client = HoverAPI(config)
-
+    client = None
+    dns_initialized = False
+    retry_delay = 10
+    retry_attempt = 0
+    phase = "initialization"
     while True:
         try:
+            if client is None:
+                phase = "initialization"
+                client = HoverAPI(config)
+            if not dns_initialized:
+                phase = "DNS initialization"
+                client.get_current_ips()
+                dns_initialized = True
+            phase = "update"
             client.update()
+            if retry_attempt:
+                logging.info(
+                    "Network recovered after %s failed request(s); update succeeded",
+                    retry_attempt,
+                )
+                retry_attempt = 0
+            retry_delay = 10
             # If we are not running as a service we only want to update once
             if not config.SERVICE:
                 break
@@ -296,9 +326,24 @@ def _main(config):
         except KeyboardInterrupt:
             logging.info("Exiting from Control-C")
             break
+        except requests.RequestException as e:
+            if not config.SERVICE:
+                logging.error(e)
+                return 1
+            retry_attempt += 1
+            logging.error(
+                "Transient network failure during %s (attempt %s); retrying in %s seconds: %s",
+                phase,
+                retry_attempt,
+                retry_delay,
+                e,
+            )
+            time.sleep(retry_delay)
+            retry_delay = min(retry_delay * 2, 300)
         except Exception as e:
             logging.error(e)
-            break
+            return 1
+    return 0
 
 
 def main():  # pragma: no cover
