@@ -2,8 +2,8 @@
 
 import pytest
 import json
-from unittest.mock import Mock
 import sys
+from unittest.mock import Mock
 
 from hover_dns_updater import HoverConfig, HoverAPI, HoverError, _main
 
@@ -24,12 +24,11 @@ class TestHoverConfigLoading:
         """Test that HoverConfig creates default config file if missing."""
         # Reload module to get clean state due to shared mutable default_config in original code
         import importlib.util
-        import sys
         from pathlib import Path
-        
+
         if "hover_dns_updater" in sys.modules:
             del sys.modules["hover_dns_updater"]
-        
+
         # Re-import using the same method as conftest
         spec = importlib.util.spec_from_file_location(
             "hover_dns_updater",
@@ -38,9 +37,9 @@ class TestHoverConfigLoading:
         module = importlib.util.module_from_spec(spec)
         sys.modules["hover_dns_updater"] = module
         spec.loader.exec_module(module)
-        
-        HoverConfig = module.HoverConfig
-        
+
+        hover_config = module.HoverConfig
+
         config_file = tmp_path / "new-config.json"
         args = Mock(
             config_file=str(config_file),
@@ -54,7 +53,7 @@ class TestHoverConfigLoading:
 
         # Mock sys.exit to prevent test from exiting
         with pytest.raises(SystemExit):
-            HoverConfig(args)
+            hover_config(args)
 
         # Verify file was created
         assert config_file.exists()
