@@ -4,6 +4,25 @@ import json
 import pytest
 from unittest.mock import Mock
 import datetime
+import importlib.util
+import sys
+from pathlib import Path
+
+
+def _load_hover_dns_updater():
+    """Load the hover-dns-updater module."""
+    spec = importlib.util.spec_from_file_location(
+        "hover_dns_updater",
+        str(Path(__file__).parent.parent / "hover-dns-updater.py")
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["hover_dns_updater"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+# Initial import
+_load_hover_dns_updater()
 
 
 @pytest.fixture
