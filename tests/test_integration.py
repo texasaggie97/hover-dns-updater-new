@@ -26,40 +26,50 @@ class TestHoverConfigLoading:
         import importlib.util
         from pathlib import Path
 
-        if "hover_dns_updater" in sys.modules:
-            del sys.modules["hover_dns_updater"]
+        # Save the original module if it exists
+        original_module = sys.modules.get("hover_dns_updater")
 
-        # Re-import using the same method as conftest
-        spec = importlib.util.spec_from_file_location(
-            "hover_dns_updater",
-            str(Path(__file__).parent.parent / "hover-dns-updater.py")
-        )
-        module = importlib.util.module_from_spec(spec)
-        sys.modules["hover_dns_updater"] = module
-        spec.loader.exec_module(module)
+        try:
+            if "hover_dns_updater" in sys.modules:
+                del sys.modules["hover_dns_updater"]
 
-        hover_config = module.HoverConfig
+            # Re-import using the same method as conftest
+            spec = importlib.util.spec_from_file_location(
+                "hover_dns_updater",
+                str(Path(__file__).parent.parent / "hover-dns-updater.py")
+            )
+            module = importlib.util.module_from_spec(spec)
+            sys.modules["hover_dns_updater"] = module
+            spec.loader.exec_module(module)
 
-        config_file = tmp_path / "new-config.json"
-        args = Mock(
-            config_file=str(config_file),
-            service=False,
-            poll_time=None,
-            verbose=0,
-            quiet=0,
-            test=False,
-            log_file=None,
-        )
+            hover_config = module.HoverConfig
 
-        # Mock sys.exit to prevent test from exiting
-        with pytest.raises(SystemExit):
-            hover_config(args)
+            config_file = tmp_path / "new-config.json"
+            args = Mock(
+                config_file=str(config_file),
+                service=False,
+                poll_time=None,
+                verbose=0,
+                quiet=0,
+                test=False,
+                log_file=None,
+            )
 
-        # Verify file was created
-        assert config_file.exists()
-        created_config = json.loads(config_file.read_text())
-        assert "username" in created_config
-        assert created_config["username"] == "ENV"
+            # Mock sys.exit to prevent test from exiting
+            with pytest.raises(SystemExit):
+                hover_config(args)
+
+            # Verify file was created
+            assert config_file.exists()
+            created_config = json.loads(config_file.read_text())
+            assert "username" in created_config
+            assert created_config["username"] == "ENV"
+        finally:
+            # Restore the original module so _main stays bound to the right module
+            if original_module is not None:
+                sys.modules["hover_dns_updater"] = original_module
+            elif "hover_dns_updater" in sys.modules:
+                del sys.modules["hover_dns_updater"]
 
     def test_config_cli_override_service(self, sample_config_file):
         """Test that CLI args override config file for service flag."""
