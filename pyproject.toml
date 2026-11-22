@@ -15,14 +15,16 @@ pyotp = "^2.8.0"
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
 pytest-cov = "^4.1.0"
+pytest-mock = "^3.11.1"
 pep8-naming = "^0.13.3"
 black = "^23.3.0"
 sphinx = "^7.0.1"
 pyproject-flake8 = "^6.0.0.post1"
 
 [tool.pytest.ini_options]
-addopts = "--cov-report term --cov-report xml --verbose --doctest-modules"
-testpaths = ["hover-dns-updater.py"]
+addopts = "--cov-report term --cov-report xml --verbose"
+testpaths = ["tests"]
+pythonpath = ["src"]
 
 [tool.flake8]
 show_source = true
@@ -31,7 +33,8 @@ show_source = true
 max_line_length = 120
 extend-exclude = ["__pycache__"]
 # H903: Windows style line endings not allowed in code
-extend-ignore = ["H903"]
+# E402: Module level import not at top (needed for sys.path manipulation)
+extend-ignore = ["H903", "E402"]
 
 [build-system]
 requires = ["poetry-core"]

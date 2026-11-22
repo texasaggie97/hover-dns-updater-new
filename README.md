@@ -86,7 +86,9 @@ Install Ubuntu service:
 Create Docker container
 -----------------------
 
->     docker build -t hover-dns-updater . ; docker tag hover-dns-updater texasaggie97/hover-dns-updater:latest texasaggie97/hover-dns-updater:vX.X.X ; docker push texasaggie97/hover-dns-updater
+> # Ensure docker engine is running when using WSL2
+> 
+> docker -H A.B.C.D build -t texasaggie97/hover-dns-updater:latest -t texasaggie97/hover-dns-updater:vX.Y.Z --push .
 
 RancherOS
 ---------
