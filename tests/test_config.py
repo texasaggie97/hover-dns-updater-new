@@ -42,8 +42,11 @@ class TestHoverConfigInitialization:
 class TestHoverConfigValidation:
     """Tests for HoverConfig validation of values."""
 
-    def test_config_handles_missing_username(self, tmp_path, mocker):
+    def test_config_handles_missing_username(self, tmp_path, mocker, monkeypatch):
         """Test that config handles missing username gracefully."""
+        # Ensure no USERNAME env var interferes
+        monkeypatch.delenv("USERNAME", raising=False)
+
         config_file = tmp_path / "config-no-user.json"
         config_data = {
             "password": "testpass",
@@ -66,8 +69,11 @@ class TestHoverConfigValidation:
         HoverConfig(args)
         # Just verify it doesn't crash
 
-    def test_config_handles_missing_password(self, tmp_path, mocker):
+    def test_config_handles_missing_password(self, tmp_path, mocker, monkeypatch):
         """Test that config handles missing password gracefully."""
+        # Ensure no PASSWORD env var interferes
+        monkeypatch.delenv("PASSWORD", raising=False)
+
         config_file = tmp_path / "config-no-pass.json"
         config_data = {
             "username": "testuser",
@@ -89,8 +95,11 @@ class TestHoverConfigValidation:
         HoverConfig(args)
         # Just verify it doesn't crash
 
-    def test_config_handles_missing_toptkey(self, tmp_path, mocker):
+    def test_config_handles_missing_toptkey(self, tmp_path, mocker, monkeypatch):
         """Test that config handles missing toptkey gracefully."""
+        # Ensure no TOPTKEY env var interferes
+        monkeypatch.delenv("TOPTKEY", raising=False)
+
         config_file = tmp_path / "config-no-topt.json"
         config_data = {
             "username": "testuser",
@@ -112,8 +121,12 @@ class TestHoverConfigValidation:
         HoverConfig(args)
         # Just verify it doesn't crash
 
-    def test_config_handles_missing_dns_ids(self, tmp_path, mocker):
+    def test_config_handles_missing_dns_ids(self, tmp_path, mocker, monkeypatch):
         """Test that config handles missing dns_ids gracefully."""
+        # Ensure no DNS1-DNS5 env vars interfere
+        for i in range(1, 6):
+            monkeypatch.delenv(f"DNS{i}", raising=False)
+
         config_file = tmp_path / "config-no-dns.json"
         config_data = {
             "username": "testuser",

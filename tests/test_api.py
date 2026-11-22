@@ -213,11 +213,18 @@ class TestHoverAPIAuthenticationFlow:
         totp_mock.return_value = totp_instance
 
         mocker.patch("requests.get", return_value=signin_response)
-        mocker.patch("requests.post", side_effect=[auth_response, auth2_response])
+        post_mock = mocker.patch(
+            "requests.post", side_effect=[auth_response, auth2_response]
+        )
 
         HoverAPI(config)
         # Verify TOTP was instantiated with the toptkey
         totp_mock.assert_called_once_with(sample_config_data["toptkey"])
+        # Verify TOTP.now() was called to generate the code
+        totp_instance.now.assert_called()
+        # Verify the generated code was sent in the second POST
+        second_post_call = post_mock.call_args_list[1]
+        assert second_post_call[1]["json"]["code"] == "123456"
 
 
 class TestHoverAPIDNSIPRetrieval:
@@ -384,7 +391,7 @@ class TestHoverAPIDNSIPUpdate:
     def test_api_update_handles_multiple_dns_records(
         self, sample_config_data, mocker, mock_dns_response
     ):
-        """Test that update handles multiple DNS records."""
+        """Test that update updates every DNS record and cache entry."""
         config = Mock()
         config.USERNAME = sample_config_data["username"]
         config.PASSWORD = sample_config_data["password"]
@@ -416,20 +423,40 @@ class TestHoverAPIDNSIPUpdate:
 
         mocker.patch("requests.get", side_effect=[signin_response, ipify_response])
         mocker.patch("requests.post", side_effect=[Mock(ok=True), auth2_response])
-        mocker.patch("requests.request", side_effect=[dns_response, update_response])
+        request_mock = mocker.patch(
+            "requests.request",
+            side_effect=[dns_response, update_response, update_response],
+        )
 
         api = HoverAPI(config)
         api.get_current_ips()
 
-        # Should have both IPs
+        # Should have both IPs cached
         assert len(api._current_dns_ips) == 2
+        assert api._current_dns_ips["dns123"] == "192.168.1.1"
+        assert api._current_dns_ips["dns456"] == "192.168.1.1"
+
+        # Perform update
+        api.update()
+
+        # Verify PUT requests were made for both DNS records
+        put_calls = [
+            c for c in request_mock.call_args_list if len(c[0]) > 0
+            and c[0][0].lower() == "put"
+        ]
+        # Should have PUT request(s) since IP changed
+        assert len(put_calls) > 0
+
+        # Verify cache entries are updated after successful update
+        assert api._current_dns_ips["dns123"] == "203.0.113.45"
+        assert api._current_dns_ips["dns456"] == "203.0.113.45"
 
 
 class TestHoverAPIErrorHandling:
     """Tests for HoverAPI error handling."""
 
     def test_api_raises_error_on_missing_hoverauth(self, sample_config_data, mocker):
-        """Test that HoverAPI raises error if hoverauth cookie missing."""
+        """Test that HoverAPI raises error if hoverauth cookie missing even on success."""
         config = Mock()
         config.USERNAME = sample_config_data["username"]
         config.PASSWORD = sample_config_data["password"]
@@ -443,8 +470,8 @@ class TestHoverAPIErrorHandling:
         auth_response.ok = True
 
         auth2_response = Mock()
-        auth2_response.ok = False
-        auth2_response.cookies = {}  # No hoverauth
+        auth2_response.ok = True  # Success, but...
+        auth2_response.cookies = {}  # No hoverauth cookie
 
         mocker.patch("pyotp.TOTP")
         mocker.patch("requests.get", return_value=signin_response)

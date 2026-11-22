@@ -102,3 +102,11 @@ def mock_dns_response():
             }
         ],
     }
+
+
+@pytest.fixture(autouse=True)
+def cleanup_dns_env_vars(monkeypatch):
+    """Automatically clean up DNS environment variables for test isolation."""
+    # Remove any DNS1-DNS9 environment variables that may have been set
+    for i in range(1, 10):
+        monkeypatch.delenv(f"DNS{i}", raising=False)
