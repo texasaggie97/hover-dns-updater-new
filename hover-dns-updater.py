@@ -23,20 +23,16 @@ import pyotp
 
 import pprint
 
-pp = pprint.PrettyPrinter(width=120)
+from src.hover_dns_updater.constants import (
+    API_BASE_URL,
+    AUTH_CACHE_SECONDS,
+    SIGNIN_URL,
+    TIMEOUT,
+    default_config,
+)
+from src.hover_dns_updater.exceptions import HoverError
 
-default_config = {
-    # Your hover.com username and password
-    "username": "ENV",
-    "password": "ENV",
-    "toptkey": "ENV",
-    # Sign into hover.com and then go to: https://www.hover.com/api/domains/YOURDOMAIN.COM/dns
-    # Look for the subdomain record(s) that you want to update and put its/their id(s) here.
-    "dns_ids": ["ENV"],
-    "logfile": "ENV",
-    "run-as-service": False,
-    "poll-time": 600,  # 10 minutes
-}
+pp = pprint.PrettyPrinter(width=120)
 
 
 def test_pass():
@@ -122,10 +118,6 @@ class HoverConfig(object):
         return ret_str
 
 
-class HoverError(Exception):
-    pass
-
-
 class HoverAPI(object):
     def __init__(self, config):
         self._config = config
@@ -136,7 +128,7 @@ class HoverAPI(object):
         logging.info("Logging in")
 
         # Getting required cookies "hover_session" and "hoverauth"
-        r = requests.get("https://www.hover.com/signin", timeout=(10, 30))
+        r = requests.get(SIGNIN_URL, timeout=TIMEOUT)
         self._cookies = {"hover_session": r.cookies["hover_session"]}
 
         params = {
@@ -145,20 +137,20 @@ class HoverAPI(object):
             "token": None,
         }
         r = requests.post(
-            "https://www.hover.com/signin/auth.json",
+            "{0}/auth.json".format(SIGNIN_URL),
             json=params,
             cookies=self._cookies,
-            timeout=(10, 30),
+            timeout=TIMEOUT,
         )
 
         otp = self._config.TOPTKEY
         topt = pyotp.TOTP(otp + "=" * (-len(otp) % 8))
         params = {"code": topt.now()}
         r = requests.post(
-            "https://www.hover.com/signin/auth2.json",
+            "{0}/auth2.json".format(SIGNIN_URL),
             json=params,
             cookies=self._cookies,
-            timeout=(10, 30),
+            timeout=TIMEOUT,
         )
 
         if not r.ok or "hoverauth" not in r.cookies:
@@ -170,7 +162,7 @@ class HoverAPI(object):
     def check_auth(self):
         td = datetime.datetime.now() - self._auth_timestamp
         # We will cache the login authorization for two hours
-        if td.total_seconds() > (2 * 60 * 60):
+        if td.total_seconds() > AUTH_CACHE_SECONDS:
             logging.info(
                 "Refreshing Hover session after %.0f seconds (two-hour threshold)",
                 td.total_seconds(),
@@ -188,7 +180,7 @@ class HoverAPI(object):
 
     def update(self):
         current_external_ip = requests.get(
-            "https://api.ipify.org", timeout=(10, 30)
+            "https://api.ipify.org", timeout=TIMEOUT
         ).text
         logging.info("Updating - Current external IP = {0}".format(current_external_ip))
         for dns_id in self._current_dns_ips:
@@ -208,9 +200,9 @@ class HoverAPI(object):
             "method={0}, resource={1}, data={2}".format(method, resource, str(data))
         )
         self.check_auth()
-        url = "https://www.hover.com/api/{0}".format(resource)
+        url = "{0}/{1}".format(API_BASE_URL, resource)
         r = requests.request(
-            method, url, data=data, cookies=self._cookies, timeout=(10, 30)
+            method, url, data=data, cookies=self._cookies, timeout=TIMEOUT
         )
         if not r.ok:
             raise HoverError(r)
