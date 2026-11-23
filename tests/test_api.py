@@ -444,24 +444,29 @@ class TestHoverAPIDNSIPUpdate:
             c for c in request_mock.call_args_list if len(c[0]) > 0
             and c[0][0].lower() == "put"
         ]
-        # Should have PUT request(s) since IP changed
-        assert len(put_calls) > 0
+        # Must have exactly 2 PUT requests (one for each record)
+        assert len(put_calls) == 2, f"Expected exactly 2 PUT requests (one per record), got {len(put_calls)}"
         
-        # Verify both records were updated with the new IP
-        assert len(put_calls) >= 2, f"Expected at least 2 PUT requests (one per record), got {len(put_calls)}"
-        
-        # Extract the DNS record IDs from PUT request URLs to verify both records were updated
-        updated_record_ids = set()
+        # Verify both records were updated with correct payload
+        updated_records = {}
         for call in put_calls:
-            # URL structure: /dns/{id}
-            url = call[0][1]  # args: (method, url, ...)
+            # call[0] is positional args: (method, url, ...)
+            # call[1] is keyword args
+            url = call[0][1]  # args[1] is URL
+            # Extract the DNS record ID from URL: /dns/{id}
             if "/dns/" in url:
                 record_id = url.split("/dns/")[-1].rstrip("/")
-                updated_record_ids.add(record_id)
+                # Get the data payload from kwargs
+                payload = call[1].get('data', {})
+                updated_records[record_id] = payload
         
-        # Verify both records were updated
-        assert "dns123" in updated_record_ids, "dns123 should be updated"
-        assert "dns456" in updated_record_ids, "dns456 should be updated"
+        # Verify both records were updated with the new IP in payload
+        assert len(updated_records) == 2, f"Expected updates for 2 records, got {len(updated_records)}"
+        assert "dns123" in updated_records, "dns123 should be updated"
+        assert "dns456" in updated_records, "dns456 should be updated"
+        # Verify the payload contains the correct new IP
+        assert updated_records["dns123"].get("content") == "203.0.113.45", f"dns123 payload incorrect: {updated_records['dns123']}"
+        assert updated_records["dns456"].get("content") == "203.0.113.45", f"dns456 payload incorrect: {updated_records['dns456']}"
 
         # Verify cache entries are updated after successful update
         assert api._current_dns_ips["dns123"] == "203.0.113.45"
