@@ -107,6 +107,27 @@ def mock_dns_response():
 @pytest.fixture(autouse=True)
 def cleanup_dns_env_vars(monkeypatch):
     """Automatically clean up DNS environment variables for test isolation."""
+    import hover_dns_updater
+    
+    # Save the pristine default_config
+    pristine_defaults = {
+        "username": "ENV",
+        "password": "ENV",
+        "toptkey": "ENV",
+        "dns_ids": ["ENV"],
+        "logfile": "ENV",
+        "run-as-service": False,
+        "poll-time": 600,
+    }
+    
+    # Reset to pristine state before each test
+    hover_dns_updater.default_config.clear()
+    hover_dns_updater.default_config.update(pristine_defaults)
+    
     # Remove any DNS1-DNS9 environment variables that may have been set
     for i in range(1, 10):
         monkeypatch.delenv(f"DNS{i}", raising=False)
+    # Also clean up auth environment variables to avoid test cross-contamination
+    monkeypatch.delenv("USERNAME", raising=False)
+    monkeypatch.delenv("PASSWORD", raising=False)
+    monkeypatch.delenv("TOPTKEY", raising=False)

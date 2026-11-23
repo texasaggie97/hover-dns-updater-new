@@ -43,8 +43,8 @@ class TestHoverConfigValidation:
     """Tests for HoverConfig validation of values."""
 
     def test_config_handles_missing_username(self, tmp_path, mocker, monkeypatch):
-        """Test that config handles missing username gracefully."""
-        # Ensure no USERNAME env var interferes
+        """Test that config raises KeyError when username env var is missing."""
+        # Ensure no USERNAME env var exists
         monkeypatch.delenv("USERNAME", raising=False)
 
         config_file = tmp_path / "config-no-user.json"
@@ -52,6 +52,7 @@ class TestHoverConfigValidation:
             "password": "testpass",
             "toptkey": "JBSWY3DPEBLW64TMMQ======",
             "dns_ids": ["dns123"],
+            "logfile": None,
         }
         config_file.write_text(json.dumps(config_data))
 
@@ -65,20 +66,23 @@ class TestHoverConfigValidation:
             log_file=None,
         )
 
-        # Config uses getitem with defaults, so missing fields may have default behavior
-        HoverConfig(args)
-        # Just verify it doesn't crash
+        # Should raise KeyError when USERNAME env var is not found
+        with pytest.raises(KeyError):
+            HoverConfig(args)
 
     def test_config_handles_missing_password(self, tmp_path, mocker, monkeypatch):
-        """Test that config handles missing password gracefully."""
-        # Ensure no PASSWORD env var interferes
+        """Test that config raises KeyError when password env var is missing."""
+        # Ensure no PASSWORD env var exists
         monkeypatch.delenv("PASSWORD", raising=False)
+        # Set USERNAME to avoid that error
+        monkeypatch.setenv("USERNAME", "testuser")
 
         config_file = tmp_path / "config-no-pass.json"
         config_data = {
-            "username": "testuser",
+            "username": "ENV",
             "toptkey": "JBSWY3DPEBLW64TMMQ======",
             "dns_ids": ["dns123"],
+            "logfile": None,
         }
         config_file.write_text(json.dumps(config_data))
 
@@ -92,19 +96,24 @@ class TestHoverConfigValidation:
             log_file=None,
         )
 
-        HoverConfig(args)
-        # Just verify it doesn't crash
+        # Should raise KeyError when PASSWORD env var is not found
+        with pytest.raises(KeyError):
+            HoverConfig(args)
 
     def test_config_handles_missing_toptkey(self, tmp_path, mocker, monkeypatch):
-        """Test that config handles missing toptkey gracefully."""
-        # Ensure no TOPTKEY env var interferes
+        """Test that config raises KeyError when toptkey env var is missing."""
+        # Ensure no TOPTKEY env var exists
         monkeypatch.delenv("TOPTKEY", raising=False)
+        # Set required env vars to avoid other errors
+        monkeypatch.setenv("USERNAME", "testuser")
+        monkeypatch.setenv("PASSWORD", "testpass")
 
         config_file = tmp_path / "config-no-topt.json"
         config_data = {
-            "username": "testuser",
-            "password": "testpass",
+            "username": "ENV",
+            "password": "ENV",
             "dns_ids": ["dns123"],
+            "logfile": None,
         }
         config_file.write_text(json.dumps(config_data))
 
@@ -118,20 +127,26 @@ class TestHoverConfigValidation:
             log_file=None,
         )
 
-        HoverConfig(args)
-        # Just verify it doesn't crash
+        # Should raise KeyError when TOPTKEY env var is not found
+        with pytest.raises(KeyError):
+            HoverConfig(args)
 
     def test_config_handles_missing_dns_ids(self, tmp_path, mocker, monkeypatch):
-        """Test that config handles missing dns_ids gracefully."""
-        # Ensure no DNS1-DNS5 env vars interfere
+        """Test that config has empty DNS_IDS when not provided and env vars missing."""
+        # Ensure no DNS1-DNS5 env vars exist
         for i in range(1, 6):
             monkeypatch.delenv(f"DNS{i}", raising=False)
+        # Set required env vars to get past auth checks
+        monkeypatch.setenv("USERNAME", "testuser")
+        monkeypatch.setenv("PASSWORD", "testpass")
+        monkeypatch.setenv("TOPTKEY", "JBSWY3DPEBLW64TMMQ======")
 
         config_file = tmp_path / "config-no-dns.json"
         config_data = {
-            "username": "testuser",
-            "password": "testpass",
-            "toptkey": "JBSWY3DPEBLW64TMMQ======",
+            "username": "ENV",
+            "password": "ENV",
+            "toptkey": "ENV",
+            "logfile": None,
         }
         config_file.write_text(json.dumps(config_data))
 
@@ -145,8 +160,9 @@ class TestHoverConfigValidation:
             log_file=None,
         )
 
-        HoverConfig(args)
-        # Just verify it doesn't crash
+        # Should create config with empty DNS_IDS when not provided
+        config = HoverConfig(args)
+        assert config.DNS_IDS == [], f"Expected empty DNS_IDS, got {config.DNS_IDS}"
 
 
 class TestHoverConfigCLIOverrides:

@@ -446,6 +446,22 @@ class TestHoverAPIDNSIPUpdate:
         ]
         # Should have PUT request(s) since IP changed
         assert len(put_calls) > 0
+        
+        # Verify both records were updated with the new IP
+        assert len(put_calls) >= 2, f"Expected at least 2 PUT requests (one per record), got {len(put_calls)}"
+        
+        # Extract the DNS record IDs from PUT request URLs to verify both records were updated
+        updated_record_ids = set()
+        for call in put_calls:
+            # URL structure: /dns/{id}
+            url = call[0][1]  # args: (method, url, ...)
+            if "/dns/" in url:
+                record_id = url.split("/dns/")[-1].rstrip("/")
+                updated_record_ids.add(record_id)
+        
+        # Verify both records were updated
+        assert "dns123" in updated_record_ids, "dns123 should be updated"
+        assert "dns456" in updated_record_ids, "dns456 should be updated"
 
         # Verify cache entries are updated after successful update
         assert api._current_dns_ips["dns123"] == "203.0.113.45"
@@ -577,7 +593,7 @@ class TestHoverAPIEdgeCases:
                     "entries": [
                         {
                             "id": "dns123",
-                            "type": "A",
+                            "type": "AAAA",
                             "name": "test",
                             "content": "2001:db8::1",
                         }
