@@ -613,8 +613,9 @@ class TestHoverAPIEdgeCases:
 
         api = HoverAPI(config)
         api.get_current_ips()
-        # Should handle IPv6 gracefully
+        # Should handle IPv6 gracefully and correctly parse the address
         assert "dns123" in api._current_dns_ips
+        assert api._current_dns_ips["dns123"] == "2001:db8::1"
 
     def test_api_handles_unicode_in_response(self, sample_config_data, mocker):
         """Test that API handles unicode in DNS response."""
