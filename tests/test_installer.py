@@ -2,7 +2,9 @@
 
 import json
 import os
+import shlex
 import subprocess
+import sys
 from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
@@ -55,6 +57,31 @@ def test_installer_deploys_package_and_generates_default_config(tmp_path):
     install_dir = root / "etc/hover-dns-updater"
     assert (install_dir / "hover-dns-updater.py").is_file()
     assert (install_dir / "src/hover_dns_updater/constants.py").is_file()
-    assert (root / "etc/systemd/system/hover-dns-updater.service").is_file()
+    service_file = root / "etc/systemd/system/hover-dns-updater.service"
+    assert service_file.is_file()
     config = json.loads((install_dir / "hover-dns-updater.json").read_text())
     assert config["username"] == "ENV"
+
+    exec_start = next(
+        line.split("=", 1)[1].strip()
+        for line in service_file.read_text().splitlines()
+        if line.startswith("ExecStart")
+    )
+    service_args = shlex.split(exec_start)[2:]
+    for index, arg in enumerate(service_args):
+        if arg.startswith("/etc/hover-dns-updater/"):
+            service_args[index] = str(install_dir) + arg.removeprefix(
+                "/etc/hover-dns-updater"
+            )
+
+    parser_code = (
+        "import runpy, sys; "
+        "runpy.run_path('hover-dns-updater.py')['_parse_args'](sys.argv[1:])"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", parser_code, *service_args],
+        cwd=install_dir,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
