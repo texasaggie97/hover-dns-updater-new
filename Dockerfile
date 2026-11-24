@@ -22,6 +22,7 @@ ENV PYTHONFAULTHANDLER=1 \
 
 # Copy the current directory contents into the container at /app
 ADD hover-dns-updater.py hover-update.cfg poetry.lock pyproject.toml /hover-dns-updater/
+ADD src /hover-dns-updater/src
 
 # Install poetry
 RUN pip install poetry==$POETRY_VERSION

@@ -65,8 +65,9 @@ Hover DNS IDs:
 Install Ubuntu service:
 -----------------------
 
--   Copy INSTALL.sh, hover-dns-updater.service, and hover-dns-updater.py
-    to a folder on you Ubuntu system
+-   Copy INSTALL.sh, hover-dns-updater.service, hover-dns-updater.py, and
+    the src directory (preserving its directory structure) to a folder on
+    your Ubuntu system
 -   ./INSTALL.sh
 -   This will install and enable, but not start, the hover-dns-updater
     service
