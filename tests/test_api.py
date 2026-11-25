@@ -3,7 +3,8 @@
 import pytest
 from unittest.mock import Mock
 
-from hover_dns_updater import HoverAPI, HoverError
+from src.hover_dns_updater.api import HoverAPI
+from src.hover_dns_updater.exceptions import HoverError
 
 
 class TestHoverAPIInitialization:

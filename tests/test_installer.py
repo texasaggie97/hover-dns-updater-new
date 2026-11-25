@@ -57,6 +57,8 @@ def test_installer_deploys_package_and_generates_default_config(tmp_path):
     install_dir = root / "etc/hover-dns-updater"
     assert (install_dir / "hover-dns-updater.py").is_file()
     assert (install_dir / "src/hover_dns_updater/constants.py").is_file()
+    assert (install_dir / "src/hover_dns_updater/config.py").is_file()
+    assert (install_dir / "src/hover_dns_updater/api.py").is_file()
     service_file = root / "etc/systemd/system/hover-dns-updater.service"
     assert service_file.is_file()
     config = json.loads((install_dir / "hover-dns-updater.json").read_text())

@@ -4,7 +4,7 @@ import json
 import pytest
 from unittest.mock import Mock
 
-from hover_dns_updater import HoverConfig
+from src.hover_dns_updater.config import HoverConfig
 
 
 class TestHoverConfigInitialization:

@@ -11,26 +11,24 @@ __maintainer__ = "Mark Silva"
 __email__ = ""
 __status__ = "Alpha"
 
-import datetime
-import json
 import logging
 import logging.handlers
 import requests
 import sys
 import time
-import os
-import pyotp
 
 import pprint
 
-from src.hover_dns_updater.constants import (
+from src.hover_dns_updater.api import HoverAPI
+from src.hover_dns_updater.config import HoverConfig
+from src.hover_dns_updater.constants import (  # noqa: F401
     API_BASE_URL,
     AUTH_CACHE_SECONDS,
     SIGNIN_URL,
     TIMEOUT,
     default_config,
 )
-from src.hover_dns_updater.exceptions import HoverError
+from src.hover_dns_updater.exceptions import HoverError  # noqa: F401
 
 pp = pprint.PrettyPrinter(width=120)
 
@@ -56,161 +54,6 @@ def configure_logging(lvl=logging.INFO, logfile=None):
         )
     hndlr.setFormatter(formatter)
     root.addHandler(hndlr)
-
-
-class HoverConfig(object):
-    def __init__(self, args):
-        self._config = default_config
-        try:
-            with open(args.config_file, "r") as c:
-                config = json.load(c)
-                for k in config:
-                    self._config[k] = config[k]
-        except FileNotFoundError:
-            with open(args.config_file, "w") as c:
-                json.dump(default_config, c)
-            sys.exit(1)
-
-        # Override config file with command line parameters
-        self.USERNAME = self._config["username"]
-        self.PASSWORD = self._config["password"]
-        self.DNS_IDS = self._config["dns_ids"]
-        self.TOPTKEY = self._config["toptkey"]
-        self.LOGFILE = (
-            self._config["logfile"] if args.log_file is None else args.log_file
-        )
-        self.SERVICE = (
-            self._config["run-as-service"] if args.service is None else args.service
-        )
-        self.POLLTIME = (
-            self._config["poll-time"] if args.poll_time is None else args.poll_time
-        )
-
-        if self.USERNAME == "ENV":
-            self.USERNAME = os.environ["USERNAME"]
-        if self.PASSWORD == "ENV":
-            self.PASSWORD = os.environ["PASSWORD"]
-        if self.LOGFILE == "ENV":
-            self.LOGFILE = os.environ["LOGFILE"]
-        if self.TOPTKEY == "ENV":
-            self.TOPTKEY = os.environ["TOPTKEY"]
-        if len(self.DNS_IDS) == 1 and self.DNS_IDS[0] == "ENV":
-            self.DNS_IDS = []
-            i = 1
-            # We expect the environment variable to be DNS1, DNS2, ... DNSn
-            while True:
-                try:
-                    id = "DNS{0}".format(i)
-                    self.DNS_IDS.append(os.environ[id])
-                    i += 1
-                except KeyError:
-                    break
-
-    def __repr__(self):
-        ret_str = self.__class__.__name__ + "():\n"
-        ret_str += "    USERNAME = {0}\n".format(self.USERNAME)
-        ret_str += "    PASSWORD = {0}\n".format(self.PASSWORD)
-        ret_str += "    TOPTKEY = {0}\n".format(self.TOPTKEY)
-        ret_str += "    DNS_IDS = {0}\n".format(pp.pformat(self.DNS_IDS))
-        ret_str += "    LOGFILE = {0}\n".format(str(self.LOGFILE))
-        ret_str += "    SERVICE = {0}\n".format(str(self.SERVICE))
-        ret_str += "    POLLTIME = {0}\n".format(str(self.POLLTIME))
-        return ret_str
-
-
-class HoverAPI(object):
-    def __init__(self, config):
-        self._config = config
-        self._current_dns_ips = {}
-        self.get_auth()
-
-    def get_auth(self):
-        logging.info("Logging in")
-
-        # Getting required cookies "hover_session" and "hoverauth"
-        r = requests.get(SIGNIN_URL, timeout=TIMEOUT)
-        self._cookies = {"hover_session": r.cookies["hover_session"]}
-
-        params = {
-            "password": self._config.PASSWORD,
-            "username": self._config.USERNAME,
-            "token": None,
-        }
-        r = requests.post(
-            "{0}/auth.json".format(SIGNIN_URL),
-            json=params,
-            cookies=self._cookies,
-            timeout=TIMEOUT,
-        )
-
-        otp = self._config.TOPTKEY
-        topt = pyotp.TOTP(otp + "=" * (-len(otp) % 8))
-        params = {"code": topt.now()}
-        r = requests.post(
-            "{0}/auth2.json".format(SIGNIN_URL),
-            json=params,
-            cookies=self._cookies,
-            timeout=TIMEOUT,
-        )
-
-        if not r.ok or "hoverauth" not in r.cookies:
-            raise HoverError(r)
-        self._cookies["hoverauth"] = r.cookies["hoverauth"]
-        self._auth_timestamp = datetime.datetime.now()
-        logging.info("Hover authentication succeeded")
-
-    def check_auth(self):
-        td = datetime.datetime.now() - self._auth_timestamp
-        # We will cache the login authorization for two hours
-        if td.total_seconds() > AUTH_CACHE_SECONDS:
-            logging.info(
-                "Refreshing Hover session after %.0f seconds (two-hour threshold)",
-                td.total_seconds(),
-            )
-            self.get_auth()
-
-    def get_current_ips(self):
-        logging.info("Getting current IP addresses from Hover:")
-        current = self.call("get", "dns")
-        for domain in current.get("domains"):
-            for entry in domain["entries"]:
-                if entry["id"] in self._config.DNS_IDS:
-                    logging.info("    {0} = {1}".format(entry["id"], entry["content"]))
-                    self._current_dns_ips[entry["id"]] = entry["content"]
-
-    def update(self):
-        current_external_ip = requests.get(
-            "https://api.ipify.org", timeout=TIMEOUT
-        ).text
-        logging.info("Updating - Current external IP = {0}".format(current_external_ip))
-        for dns_id in self._current_dns_ips:
-            logging.debug("    {0} = {1}".format(dns_id, self._current_dns_ips[dns_id]))
-            if self._current_dns_ips[dns_id] != current_external_ip:
-                logging.info(
-                    "    Updating DNS entry for {0} to {1}".format(
-                        dns_id, current_external_ip
-                    )
-                )
-                self.call("put", "dns/" + dns_id, {"content": current_external_ip})
-                # Update cache
-                self._current_dns_ips[dns_id] = current_external_ip
-
-    def call(self, method, resource, data=None):
-        logging.debug(
-            "method={0}, resource={1}, data={2}".format(method, resource, str(data))
-        )
-        self.check_auth()
-        url = "{0}/{1}".format(API_BASE_URL, resource)
-        r = requests.request(
-            method, url, data=data, cookies=self._cookies, timeout=TIMEOUT
-        )
-        if not r.ok:
-            raise HoverError(r)
-        if r.content:
-            body = r.json()
-            if "succeeded" not in body or body["succeeded"] is not True:
-                raise HoverError(body)
-            return body
 
 
 def _parse_args(argv):
