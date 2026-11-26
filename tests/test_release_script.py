@@ -34,7 +34,8 @@ def release_repo(tmp_path):
     git("config", "user.name", "Release Test")
     git("config", "user.email", "release@example.invalid")
     (repo / "Dockerfile").write_text("committed\n")
-    git("add", "Dockerfile")
+    (repo / "README.md").write_text("| Versions | 1.0.1 |\n")
+    git("add", "Dockerfile", "README.md")
     git("commit", "--quiet", "-m", "Test snapshot")
     subprocess.run(
         ["git", "init", "--bare", "--quiet", str(remote)], check=True, env=env
@@ -96,6 +97,12 @@ def test_publishes_matching_image_and_committed_git_tag(
     result = run_release(release_repo, *args)
     assert result.returncode == 0, result.stderr
     assert Path(env["DOCKER_CONTEXT"]).read_text() == "committed\n"
+    expected_versions = (
+        tag.removeprefix("v") if stable else f"1.0.1, {tag.removeprefix('v')}"
+    )
+    assert (release_repo[0] / "README.md").read_text() == (
+        f"| Versions | {expected_versions} |\n"
+    )
     calls = Path(env["DOCKER_LOG"]).read_text().splitlines()
     build_tags = f"-t {IMAGE}:{tag}"
     if stable:
@@ -165,6 +172,15 @@ def test_prerelease_uses_next_remote_rc_number(release_repo):
         f"build -t {IMAGE}:v1.2.4-rc.11 -",
         f"push {IMAGE}:v1.2.4-rc.11",
     ]
+    assert (release_repo[0] / "README.md").read_text() == (
+        "| Versions | 1.0.1, 1.2.4-rc.11 |\n"
+    )
+
+
+def test_prerelease_before_latest_release_is_not_listed(release_repo):
+    result = run_release(release_repo, "1.0.1-rc.1", "--prerelease")
+    assert result.returncode == 0, result.stderr
+    assert (release_repo[0] / "README.md").read_text() == "| Versions | 1.0.1 |\n"
 
 
 def test_prerelease_fails_if_remote_tags_cannot_be_read(release_repo):
@@ -216,3 +232,4 @@ def test_github_release_failure_does_not_push_latest(release_repo):
         f"build -t {IMAGE}:v1.2.3 -t {IMAGE}:latest -",
         f"push {IMAGE}:v1.2.3",
     ]
+    assert (release_repo[0] / "README.md").read_text() == "| Versions | 1.0.1 |\n"

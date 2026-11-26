@@ -126,6 +126,10 @@ To publish a release, authenticate Docker to Docker Hub and the GitHub CLI
 The script builds from committed `HEAD` (not uncommitted changes), pushes the
 versioned image, a matching Git tag, and a GitHub Release with generated notes.
 It marks prereleases on GitHub and pushes `latest` only for stable releases.
+After a successful release, it updates the `Versions` row in this checkout:
+stable releases replace the listed version, while a prerelease is also listed
+when its version is newer than the latest stable version. Commit that README
+update separately; it is not included in the release just published.
 For a prerelease without a suffix, the script checks `origin` and uses the next
 RC number after the highest existing matching tag, starting with `-rc.1`.
 Specify a suffix such as `1.2.4-beta.2` with `--prerelease` to use it unchanged.
