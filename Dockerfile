@@ -21,7 +21,7 @@ ENV PYTHONFAULTHANDLER=1 \
 
 
 # Copy the current directory contents into the container at /app
-ADD hover-dns-updater.py hover-update.cfg poetry.lock pyproject.toml /hover-dns-updater/
+ADD hover-dns-updater.py hover-update.cfg poetry.lock pyproject.toml README.md /hover-dns-updater/
 ADD src /hover-dns-updater/src
 
 # Install poetry
@@ -33,7 +33,8 @@ RUN poetry install --no-interaction --no-ansi
 ENV NAME=hover-dns-updater
 
 FROM base AS test
-RUN poetry run pytest hover-dns-updater.py
+ADD tests /hover-dns-updater/tests
+RUN poetry run pytest tests/
 
 FROM base AS production
 # Run app.py when the container launches

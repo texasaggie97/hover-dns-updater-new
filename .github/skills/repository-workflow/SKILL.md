@@ -10,9 +10,10 @@ commands from the repository root.
 
 ## Repository structure
 
-- `hover-dns-updater.py` is the current CLI and orchestration entry point.
+- `hover-dns-updater.py` is a backward-compatible CLI wrapper.
 - `src/hover_dns_updater/` contains the extracted configuration, Hover API,
-  constants, and exception modules. The script imports from this directory.
+  constants, exception, and CLI orchestration modules. Poetry installs the
+  `hover-dns-updater` console entry point.
 - `tests/` contains config and API unit tests, integration tests, installer
   tests, and shared fixtures in `conftest.py`.
 - `pyproject.toml` and `poetry.lock` define Python dependencies and tooling.
@@ -53,7 +54,7 @@ Use the local environment's executables explicitly:
 ```sh
 .venv/bin/python -m pytest tests/
 .venv/bin/black --check .
-.venv/bin/pflake8
+.venv/bin/pflake8 hover-dns-updater.py src tests
 VIRTUAL_ENV="$PWD/.venv" PATH="$PWD/.venv/bin:$PATH" poetry build
 ```
 
@@ -62,6 +63,12 @@ Python CI workflow runs Black in formatting mode before pflake8 and pytest;
 `black --check` above does not modify files. Formatting the whole repository
 can change unrelated files, so inspect its effects before including them.
 Check the Docker workflow and Dockerfile when changing container behavior.
+
+Always restrict local pflake8 to project paths as shown above. Flake8 6 does
+not exclude `.venv` by default, so an unrestricted scan can lint installed
+dependencies and produce enormous output. The root `.flake8` configuration
+takes precedence over the corresponding `pyproject.toml` settings; keep
+`.venv` excluded in both files.
 
 ## Maintenance
 

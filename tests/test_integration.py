@@ -2,10 +2,12 @@
 
 import pytest
 import json
-import sys
 from unittest.mock import Mock
 
-from hover_dns_updater import HoverConfig, HoverAPI, HoverError, _main
+from hover_dns_updater.api import HoverAPI
+from hover_dns_updater.config import HoverConfig
+from hover_dns_updater.exceptions import HoverError
+from hover_dns_updater.main import _main
 
 
 class TestHoverConfigLoading:
@@ -22,54 +24,24 @@ class TestHoverConfigLoading:
 
     def test_config_creates_default_on_missing_file(self, tmp_path, mocker):
         """Test that HoverConfig creates default config file if missing."""
-        # Reload module to get clean state due to shared mutable default_config in original code
-        import importlib.util
-        from pathlib import Path
+        config_file = tmp_path / "new-config.json"
+        args = Mock(
+            config_file=str(config_file),
+            service=False,
+            poll_time=None,
+            verbose=0,
+            quiet=0,
+            test=False,
+            log_file=None,
+        )
 
-        # Save the original module if it exists
-        original_module = sys.modules.get("hover_dns_updater")
+        with pytest.raises(SystemExit):
+            HoverConfig(args)
 
-        try:
-            if "hover_dns_updater" in sys.modules:
-                del sys.modules["hover_dns_updater"]
-
-            # Re-import using the same method as conftest
-            spec = importlib.util.spec_from_file_location(
-                "hover_dns_updater",
-                str(Path(__file__).parent.parent / "hover-dns-updater.py")
-            )
-            module = importlib.util.module_from_spec(spec)
-            sys.modules["hover_dns_updater"] = module
-            spec.loader.exec_module(module)
-
-            hover_config = module.HoverConfig
-
-            config_file = tmp_path / "new-config.json"
-            args = Mock(
-                config_file=str(config_file),
-                service=False,
-                poll_time=None,
-                verbose=0,
-                quiet=0,
-                test=False,
-                log_file=None,
-            )
-
-            # Mock sys.exit to prevent test from exiting
-            with pytest.raises(SystemExit):
-                hover_config(args)
-
-            # Verify file was created
-            assert config_file.exists()
-            created_config = json.loads(config_file.read_text())
-            assert "username" in created_config
-            assert created_config["username"] == "ENV"
-        finally:
-            # Restore the original module so _main stays bound to the right module
-            if original_module is not None:
-                sys.modules["hover_dns_updater"] = original_module
-            elif "hover_dns_updater" in sys.modules:
-                del sys.modules["hover_dns_updater"]
+        assert config_file.exists()
+        created_config = json.loads(config_file.read_text())
+        assert "username" in created_config
+        assert created_config["username"] == "ENV"
 
     def test_config_cli_override_service(self, sample_config_file):
         """Test that CLI args override config file for service flag."""
@@ -462,10 +434,6 @@ class TestMainLoop:
         # Should complete successfully and return 0
         assert result == 0
 
-    @pytest.mark.xfail(
-        reason="Test fails due to module state pollution from other tests - will be fixed in Phase 1B refactoring",
-        strict=False
-    )
     def test_main_handles_keyboard_interrupt(self, sample_config_data, mocker):
         """Test that _main handles KeyboardInterrupt gracefully."""
         config = Mock()
@@ -493,7 +461,7 @@ class TestMainLoop:
         api_mock = Mock()
         api_mock.get_current_ips.side_effect = KeyboardInterrupt()
 
-        mocker.patch("hover_dns_updater.HoverAPI", return_value=api_mock)
+        mocker.patch("hover_dns_updater.main.HoverAPI", return_value=api_mock)
 
         # Run main - should handle the interrupt
         result = _main(config)

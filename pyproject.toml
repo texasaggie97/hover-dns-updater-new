@@ -5,6 +5,10 @@ description = "Update DNS entry on hover.com"
 authors = ["Mark Silva <github3@markesilva.com>"]
 license = "GPL"
 readme = "README.md"
+packages = [{ include = "hover_dns_updater", from = "src" }]
+
+[tool.poetry.scripts]
+hover-dns-updater = "hover_dns_updater.main:main"
 
 [tool.poetry.dependencies]
 python = "^3.9"
@@ -22,15 +26,20 @@ sphinx = "^7.0.1"
 pyproject-flake8 = "^6.0.0.post1"
 
 [tool.pytest.ini_options]
-addopts = "--cov-report term --cov-report xml --verbose"
+addopts = "--cov=src/hover_dns_updater --cov-report=term-missing --cov-report=xml -v"
 testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+    "unit: fast isolated unit tests",
+    "integration: multi-module integration tests",
+]
 
 [tool.flake8]
 show_source = true
 # We recommend setting your editor's visual guide to 79 but allow overflow to
 # 120 for readability in certain cases
 max_line_length = 120
-extend-exclude = ["__pycache__"]
+extend-exclude = ["__pycache__", ".venv"]
 # H903: Windows style line endings not allowed in code
 extend-ignore = ["H903"]
 

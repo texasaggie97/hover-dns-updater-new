@@ -41,6 +41,10 @@ Prerequisites:
     - `pip install -U poetry==1.8.2`
     - `poetry install` - this will create the poetry venv with all dependencies installed
 
+After installation, run `poetry run hover-dns-updater --help` for the
+installed command. The existing `python hover-dns-updater.py --help` script
+also remains available from a source checkout.
+
 Hover TOPT Key:
 ---------------
 
