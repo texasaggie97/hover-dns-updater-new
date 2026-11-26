@@ -44,6 +44,8 @@ Prerequisites:
 After installation, run `poetry run hover-dns-updater --help` for the
 installed command. The existing `python hover-dns-updater.py --help` script
 also remains available from a source checkout.
+Use `--poll-time` to override the polling interval in whole seconds when
+running with `--service`.
 
 Hover TOPT Key:
 ---------------

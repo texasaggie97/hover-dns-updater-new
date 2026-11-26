@@ -1,10 +1,175 @@
 """Unit tests for HoverAPI class."""
 
+import datetime
 import pytest
+import requests
 from unittest.mock import Mock
 
 from hover_dns_updater.api import HoverAPI
+from hover_dns_updater.constants import API_BASE_URL, AUTH_CACHE_SECONDS, TIMEOUT
 from hover_dns_updater.exceptions import HoverError
+
+
+@pytest.fixture
+def isolated_api(mocker):
+    mocker.patch.object(HoverAPI, "get_auth")
+    api = HoverAPI(Mock(DNS_IDS=["first", "second"]))
+    api.get_auth.reset_mock()
+    api._cookies = {"hover_session": "session", "hoverauth": "auth"}
+    return api
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("seconds", "refresh"),
+    [
+        (-1, False),
+        (0, False),
+        (AUTH_CACHE_SECONDS - 1, False),
+        (AUTH_CACHE_SECONDS, False),
+        (AUTH_CACHE_SECONDS + 0.001, True),
+        (AUTH_CACHE_SECONDS * 2, True),
+    ],
+)
+def test_auth_cache_expiry(isolated_api, mocker, seconds, refresh):
+    now = datetime.datetime(2025, 1, 1)
+    clock = mocker.patch("hover_dns_updater.api.datetime.datetime")
+    clock.now.return_value = now
+    isolated_api._auth_timestamp = now - datetime.timedelta(seconds=seconds)
+
+    isolated_api.check_auth()
+
+    assert isolated_api.get_auth.call_count == int(refresh)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("method", ["get", "put", "post", "delete"])
+@pytest.mark.parametrize("data", [None, {"content": "203.0.113.1"}])
+def test_api_call_sends_authenticated_request(isolated_api, mocker, method, data):
+    check_auth = mocker.patch.object(isolated_api, "check_auth")
+    response = Mock(ok=True, content=b"json")
+    response.json.return_value = {"succeeded": True, "value": 42}
+    request = mocker.patch(
+        "hover_dns_updater.api.requests.request", return_value=response
+    )
+
+    assert isolated_api.call(method, "dns/first", data) == response.json.return_value
+    check_auth.assert_called_once_with()
+    request.assert_called_once_with(
+        method,
+        f"{API_BASE_URL}/dns/first",
+        data=data,
+        cookies=isolated_api._cookies,
+        timeout=TIMEOUT,
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "body",
+    [
+        {},
+        {"succeeded": False},
+        {"succeeded": None},
+        {"succeeded": 1},
+        {"succeeded": "true"},
+    ],
+)
+def test_api_call_rejects_unsuccessful_json(isolated_api, mocker, body):
+    mocker.patch.object(isolated_api, "check_auth")
+    response = Mock(ok=True, content=b"json")
+    response.json.return_value = body
+    mocker.patch("hover_dns_updater.api.requests.request", return_value=response)
+
+    with pytest.raises(HoverError) as error:
+        isolated_api.call("get", "dns")
+    assert error.value.args == (body,)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("status", [400, 401, 403, 429, 500, 503])
+def test_api_call_rejects_http_error(isolated_api, mocker, status):
+    mocker.patch.object(isolated_api, "check_auth")
+    response = Mock(ok=False, status_code=status)
+    mocker.patch("hover_dns_updater.api.requests.request", return_value=response)
+
+    with pytest.raises(HoverError) as error:
+        isolated_api.call("get", "dns")
+    assert error.value.args == (response,)
+    response.json.assert_not_called()
+
+
+@pytest.mark.unit
+def test_api_call_accepts_empty_success_response(isolated_api, mocker):
+    mocker.patch.object(isolated_api, "check_auth")
+    response = Mock(ok=True, content=b"")
+    mocker.patch("hover_dns_updater.api.requests.request", return_value=response)
+    assert isolated_api.call("put", "dns/first") is None
+    response.json.assert_not_called()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("exception", [requests.Timeout, requests.ConnectionError])
+def test_api_call_propagates_network_errors(isolated_api, mocker, exception):
+    mocker.patch.object(isolated_api, "check_auth")
+    mocker.patch(
+        "hover_dns_updater.api.requests.request", side_effect=exception("offline")
+    )
+    with pytest.raises(exception, match="offline"):
+        isolated_api.call("get", "dns")
+
+
+@pytest.mark.unit
+def test_api_updates_only_changed_records_and_caches_success(isolated_api, mocker):
+    isolated_api._current_dns_ips = {"first": "192.0.2.1", "second": "203.0.113.1"}
+    get = mocker.patch("hover_dns_updater.api.requests.get")
+    get.return_value.text = "203.0.113.1"
+    call = mocker.patch.object(isolated_api, "call")
+
+    isolated_api.update()
+    isolated_api.update()
+
+    call.assert_called_once_with("put", "dns/first", {"content": "203.0.113.1"})
+    assert isolated_api._current_dns_ips == {
+        "first": "203.0.113.1",
+        "second": "203.0.113.1",
+    }
+    assert get.call_count == 2
+    get.assert_called_with("https://api.ipify.org", timeout=TIMEOUT)
+
+
+@pytest.mark.unit
+def test_api_does_not_cache_failed_update(isolated_api, mocker):
+    isolated_api._current_dns_ips = {"first": "192.0.2.1"}
+    mocker.patch("hover_dns_updater.api.requests.get").return_value.text = "203.0.113.1"
+    mocker.patch.object(isolated_api, "call", side_effect=HoverError("failed"))
+    with pytest.raises(HoverError, match="failed"):
+        isolated_api.update()
+    assert isolated_api._current_dns_ips == {"first": "192.0.2.1"}
+
+
+@pytest.mark.unit
+def test_api_collects_matching_dns_records_across_domains(isolated_api, mocker):
+    mocker.patch.object(
+        isolated_api,
+        "call",
+        return_value={
+            "domains": [
+                {
+                    "entries": [
+                        {"id": "first", "content": "192.0.2.1"},
+                        {"id": "other", "content": "192.0.2.2"},
+                    ]
+                },
+                {"entries": [{"id": "second", "content": "2001:db8::1"}]},
+            ]
+        },
+    )
+    isolated_api.get_current_ips()
+    assert isolated_api._current_dns_ips == {
+        "first": "192.0.2.1",
+        "second": "2001:db8::1",
+    }
 
 
 class TestHoverAPIInitialization:

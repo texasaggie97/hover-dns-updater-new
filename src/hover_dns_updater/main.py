@@ -57,7 +57,8 @@ def _parse_args(argv):
         "--poll-time",
         default=None,
         action="store",
-        help="Time in seconds to sleep between polling the ip address",
+        type=int,
+        help="Time in whole seconds to sleep between polling the ip address",
     )
 
     verbosity_group = parser.add_argument_group("Verbosity, Logging & Debugging")
