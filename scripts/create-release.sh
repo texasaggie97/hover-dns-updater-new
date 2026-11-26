@@ -32,6 +32,46 @@ fi
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 commit=$(git rev-parse --verify 'HEAD^{commit}')
 
+readme_versions_pattern='^\|[[:space:]]*Versions[[:space:]]*\|[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+)([[:space:]]*,[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?[[:space:]]*\|$'
+readme_versions_count=0
+readme_release_version=
+while IFS= read -r line || [[ -n $line ]]; do
+    if [[ $line =~ ^\|[[:space:]]*Versions[[:space:]]*\| ]]; then
+        ((readme_versions_count += 1))
+        if [[ $line =~ $readme_versions_pattern ]]; then
+            readme_release_version=${BASH_REMATCH[1]}
+        fi
+    fi
+done < README.md
+if [[ $readme_versions_count -ne 1 || -z $readme_release_version ]]; then
+    echo "README.md must contain exactly one valid Versions row." >&2
+    exit 1
+fi
+
+version_is_after() {
+    local LC_ALL=C
+    local candidate=$1 current=$2
+    local -a candidate_parts current_parts
+    local index
+    IFS=. read -r -a candidate_parts <<< "$candidate"
+    IFS=. read -r -a current_parts <<< "$current"
+    for index in 0 1 2; do
+        if (( ${#candidate_parts[index]} > ${#current_parts[index]} )); then
+            return 0
+        fi
+        if (( ${#candidate_parts[index]} < ${#current_parts[index]} )); then
+            return 1
+        fi
+        if [[ ${candidate_parts[index]} > ${current_parts[index]} ]]; then
+            return 0
+        fi
+        if [[ ${candidate_parts[index]} < ${current_parts[index]} ]]; then
+            return 1
+        fi
+    done
+    return 1
+}
+
 if [[ $prerelease == true && $version != *-* ]]; then
     prefix="refs/tags/v${version}-rc."
     remote_rc_tags=$(git ls-remote --tags --refs origin "${prefix}*")
@@ -49,6 +89,17 @@ if [[ $prerelease == true && $version != *-* ]]; then
         fi
     done <<< "$remote_rc_tags"
     version="${version}-rc.$((max_rc + 1))"
+fi
+
+if [[ $prerelease == true ]]; then
+    prerelease_base=${version%%-*}
+    if version_is_after "$prerelease_base" "$readme_release_version"; then
+        readme_version="${readme_release_version}, ${version}"
+    else
+        readme_version=$readme_release_version
+    fi
+else
+    readme_version=$version
 fi
 
 tag="v${version}"
@@ -89,5 +140,20 @@ gh release create "$tag" "${release_args[@]}"
 if [[ $prerelease == false ]]; then
     docker push "$image:latest"
 fi
+
+readme_tmp=$(mktemp README.md.XXXXXX)
+trap 'rm -f "$readme_tmp"' EXIT
+cp -p README.md "$readme_tmp"
+awk -v version="$readme_version" '
+    /^\|[[:space:]]*Versions[[:space:]]*\|/ {
+        print "| Versions | " version " |"
+        found++
+        next
+    }
+    { print }
+    END { if (found != 1) exit 1 }
+' README.md > "$readme_tmp"
+mv "$readme_tmp" README.md
+trap - EXIT
 
 echo "Published $image:$tag and GitHub release $tag at $commit."
