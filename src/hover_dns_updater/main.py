@@ -144,6 +144,11 @@ def _test_config(config):
     ):
         errors.append("POLLTIME must be a non-negative integer")
 
+    if config.LOGFILE is not None and (
+        not isinstance(config.LOGFILE, str) or not config.LOGFILE.strip()
+    ):
+        errors.append("LOGFILE must be null or a non-empty path string")
+
     if errors:
         for error in errors:
             print(f"Configuration error: {error}", file=sys.stderr)

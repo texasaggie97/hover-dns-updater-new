@@ -176,6 +176,10 @@ def test_offline_config_check_redacts_secrets_and_succeeds(
         ("poll-time", -1, "POLLTIME"),
         ("poll-time", "60", "POLLTIME"),
         ("poll-time", True, "POLLTIME"),
+        ("logfile", 123, "LOGFILE"),
+        ("logfile", "", "LOGFILE"),
+        ("logfile", "   ", "LOGFILE"),
+        ("logfile", [], "LOGFILE"),
     ],
 )
 def test_offline_config_check_rejects_invalid_values(
@@ -202,6 +206,53 @@ def test_offline_config_check_rejects_invalid_values(
     assert "testpass" not in result.stdout + result.stderr
     assert "invalid-secret!" not in result.stdout + result.stderr
     assert "JBSWY3DPEBLW64TMMQ======" not in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("logfile", [None, "output.log"])
+def test_offline_config_check_accepts_logfile_without_creating_it(
+    tmp_path, sample_config_data, logfile
+):
+    sample_config_data["logfile"] = logfile
+    config_path = tmp_path / "config.json"
+    config_path.write_text(json.dumps(sample_config_data))
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(REPOSITORY_ROOT / "hover-dns-updater.py"),
+            "--config-file",
+            str(config_path),
+            "--test",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert not (tmp_path / "output.log").exists()
+
+
+def test_offline_config_check_validates_overridden_logfile(
+    tmp_path, sample_config_data
+):
+    sample_config_data["logfile"] = 123
+    config_path = tmp_path / "config.json"
+    config_path.write_text(json.dumps(sample_config_data))
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(REPOSITORY_ROOT / "hover-dns-updater.py"),
+            "--config-file",
+            str(config_path),
+            "--test",
+            "--log-file",
+            "",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "LOGFILE" in result.stderr
 
 
 def test_installed_config_check_returns_failure_for_invalid_configuration(

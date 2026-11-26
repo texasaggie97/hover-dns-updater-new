@@ -48,11 +48,12 @@ Use `--poll-time` to override the polling interval in whole seconds when
 running with `--service`.
 
 Run `poetry run hover-dns-updater --test` to check configuration offline.
-It validates required values, DNS IDs, the Base32 TOTP key, and the
-non-negative polling interval, then prints a summary with the password and
-TOTP key redacted. It exits nonzero for invalid configuration and does not
-verify Hover credentials or DNS records. As with normal startup, a missing
-configuration file is created with defaults and the command exits nonzero.
+It validates required values, DNS IDs, the Base32 TOTP key, the non-negative
+polling interval, and the log path, then prints a summary with the password and
+TOTP key redacted. It does not open the log file or verify Hover credentials or
+DNS records. It exits nonzero for invalid configuration. As with normal
+startup, a missing configuration file is created with defaults and the command
+exits nonzero.
 
 Hover TOPT Key:
 ---------------
