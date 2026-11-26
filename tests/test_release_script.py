@@ -54,9 +54,19 @@ def release_repo(tmp_path):
         'if [ "$1" = push ] && [ "${FAIL_PUSH:-}" = 1 ]; then exit 1; fi\n'
     )
     docker.chmod(0o755)
+    gh = fake_bin / "gh"
+    gh.write_text(
+        "#!/bin/sh\n"
+        'printf "%s\\n" "$*" >> "$GH_LOG"\n'
+        'if [ "$1" != release ] || [ "$2" != create ]; then exit 1; fi\n'
+        'git ls-remote --refs origin "refs/tags/$3" | grep -q . || exit 1\n'
+        'if [ "${FAIL_GH:-}" = 1 ]; then echo "release failed" >&2; exit 1; fi\n'
+    )
+    gh.chmod(0o755)
     env["PATH"] = str(fake_bin) + os.pathsep + env["PATH"]
     env["DOCKER_LOG"] = str(tmp_path / "docker.log")
     env["DOCKER_CONTEXT"] = str(tmp_path / "context")
+    env["GH_LOG"] = str(tmp_path / "gh.log")
     return repo, env, git
 
 
@@ -99,6 +109,11 @@ def test_publishes_matching_image_and_committed_git_tag(
     assert git("ls-remote", "--refs", "origin", f"refs/tags/{tag}").split()[0] == git(
         "rev-parse", "HEAD"
     )
+    prerelease_flag = "" if stable else " --prerelease"
+    assert Path(env["GH_LOG"]).read_text().splitlines() == [
+        f"release create {tag} --repo {git('remote', 'get-url', '--push', 'origin')}"
+        f" --verify-tag --title {tag} --generate-notes{prerelease_flag}"
+    ]
 
 
 @pytest.mark.parametrize(
@@ -187,3 +202,17 @@ def test_image_push_failure_does_not_create_git_tag(release_repo):
     assert result.returncode != 0
     assert git("tag", "--list") == ""
     assert git("ls-remote", "--tags", "origin") == ""
+    assert not Path(env["GH_LOG"]).exists()
+
+
+def test_github_release_failure_does_not_push_latest(release_repo):
+    _, env, git = release_repo
+    env["FAIL_GH"] = "1"
+    result = run_release(release_repo, "1.2.3")
+    assert result.returncode != 0
+    assert "release failed" in result.stderr
+    assert git("ls-remote", "--refs", "origin", "refs/tags/v1.2.3")
+    assert Path(env["DOCKER_LOG"]).read_text().splitlines() == [
+        f"build -t {IMAGE}:v1.2.3 -t {IMAGE}:latest -",
+        f"push {IMAGE}:v1.2.3",
+    ]

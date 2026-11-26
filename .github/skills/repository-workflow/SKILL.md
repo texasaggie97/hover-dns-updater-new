@@ -20,7 +20,7 @@ commands from the repository root.
 - `Dockerfile` defines the container; `INSTALL.sh` and
   `hover-dns-updater.service` install and run the systemd service.
 - `.github/workflows/` contains the Python and Docker CI workflows.
-- `scripts/create-release.sh` builds and publishes release images and Git tags.
+- `scripts/create-release.sh` publishes release images, Git tags, and GitHub Releases.
 
 ## Isolated Python environment
 

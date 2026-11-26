@@ -67,18 +67,27 @@ if [[ -n $remote_tag ]]; then
     exit 1
 fi
 
+if ! command -v gh >/dev/null; then
+    echo "GitHub CLI (gh) is required to create a release." >&2
+    exit 1
+fi
+repository=$(git remote get-url --push origin)
 image=texasaggie97/hover-dns-updater
 build_tags=(-t "$image:$tag")
+release_args=(--repo "$repository" --verify-tag --title "$tag" --generate-notes)
 if [[ $prerelease == false ]]; then
     build_tags+=(-t "$image:latest")
+else
+    release_args+=(--prerelease)
 fi
 
 git archive --format=tar "$commit" | docker build "${build_tags[@]}" -
 docker push "$image:$tag"
 git tag "$tag" "$commit"
 git push origin "refs/tags/$tag:refs/tags/$tag"
+gh release create "$tag" "${release_args[@]}"
 if [[ $prerelease == false ]]; then
     docker push "$image:latest"
 fi
 
-echo "Published $image:$tag and Git tag $tag at $commit."
+echo "Published $image:$tag and GitHub release $tag at $commit."

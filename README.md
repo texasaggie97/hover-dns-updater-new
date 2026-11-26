@@ -115,8 +115,8 @@ docker build -t texasaggie97/hover-dns-updater:latest .
 The production image contains runtime dependencies only. The full test suite
 runs separately in Python CI; Docker CI smoke-tests the production image.
 
-To publish a release, authenticate Docker to Docker Hub and ensure Git can push
-to the GitHub `origin` remote. Run:
+To publish a release, authenticate Docker to Docker Hub and the GitHub CLI
+(`gh`) to GitHub, and ensure Git can push to the GitHub `origin` remote. Run:
 
 ```sh
 ./scripts/create-release.sh 1.2.3
@@ -124,13 +124,13 @@ to the GitHub `origin` remote. Run:
 ```
 
 The script builds from committed `HEAD` (not uncommitted changes), pushes the
-versioned image and a matching Git tag to `origin`, and pushes `latest` only for
-stable releases. For a prerelease without a suffix, the script checks `origin`
-and uses the next RC number after the highest existing matching tag, starting
-with `-rc.1`. Specify a suffix such as `1.2.4-beta.2` with `--prerelease` to
-use it unchanged. It creates a Git tag, not a GitHub Release. If publishing
-fails partway through, inspect the image and Git tags already created before
-completing or retrying manually.
+versioned image, a matching Git tag, and a GitHub Release with generated notes.
+It marks prereleases on GitHub and pushes `latest` only for stable releases.
+For a prerelease without a suffix, the script checks `origin` and uses the next
+RC number after the highest existing matching tag, starting with `-rc.1`.
+Specify a suffix such as `1.2.4-beta.2` with `--prerelease` to use it unchanged.
+If publishing fails partway through, inspect the image, Git tag, and GitHub
+Release before completing or retrying manually.
 
 ### hover.env
 
