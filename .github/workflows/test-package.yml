@@ -41,11 +41,10 @@ jobs:
         run: |
           poetry run pytest --cov-fail-under=80
 
-      # Coveralls upload is disabled; the coverage gate still runs above.
-      # - name: Upload coverage to Coveralls
-      #   if: matrix.python-version == '3.11'
-      #   uses: coverallsapp/github-action@v2
-      #   with:
-      #     github-token: ${{ secrets.GITHUB_TOKEN }}
-      #     file: coverage.xml
-      #     format: cobertura
+      - name: Upload coverage to Coveralls
+        if: matrix.python-version == '3.11'
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: coverage.xml
+          format: cobertura
