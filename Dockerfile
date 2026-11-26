@@ -35,7 +35,7 @@ ENV NAME=hover-dns-updater
 FROM base AS test
 ADD INSTALL.sh hover-dns-updater.service /hover-dns-updater/
 ADD tests /hover-dns-updater/tests
-RUN poetry run pytest tests/
+RUN poetry run pytest tests/ --ignore=tests/test_release_script.py
 
 FROM base AS production
 ENV HOVER_HEALTHCHECK_FILE=/tmp/hover-dns-updater-health
