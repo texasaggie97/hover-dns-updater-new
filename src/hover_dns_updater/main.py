@@ -3,6 +3,8 @@
 Based on a script by Andrew Barilla: https://gist.github.com/andybarilla/b0dd93e71ff18303c059
 """
 
+import binascii
+import json
 import logging
 import logging.handlers
 import os
@@ -11,6 +13,7 @@ import sys
 import time
 from pathlib import Path
 
+import pyotp
 import requests
 
 from .api import HoverAPI
@@ -78,7 +81,10 @@ def _parse_args(argv):
         help="Print only essential information.  Can be repeated for quieter output.",
     )
     verbosity_group.add_argument(
-        "--test", action="store_true", default=False, help="Run doctests then quit."
+        "--test",
+        action="store_true",
+        default=False,
+        help="Validate configuration offline, print a redacted summary, and quit.",
     )
     verbosity_group.add_argument(
         "--log-file",
@@ -105,10 +111,54 @@ def _parse_args(argv):
         4: logging.CRITICAL,
     }[verbosity]
 
-    if args.test:
-        return args
-
     return args
+
+
+def _test_config(config):
+    errors = []
+    for name in ("USERNAME", "PASSWORD", "TOPTKEY"):
+        value = getattr(config, name)
+        if not isinstance(value, str) or not value.strip():
+            errors.append(f"{name} must be a non-empty string")
+
+    if isinstance(config.TOPTKEY, str) and config.TOPTKEY.strip():
+        try:
+            pyotp.TOTP(config.TOPTKEY).byte_secret()
+        except (binascii.Error, ValueError):
+            errors.append("TOPTKEY must be a valid Base32 TOTP key")
+
+    if (
+        not isinstance(config.DNS_IDS, list)
+        or not config.DNS_IDS
+        or any(
+            not isinstance(dns_id, str) or not dns_id.strip()
+            for dns_id in config.DNS_IDS
+        )
+    ):
+        errors.append("DNS_IDS must contain at least one non-empty DNS record ID")
+
+    if (
+        not isinstance(config.POLLTIME, int)
+        or isinstance(config.POLLTIME, bool)
+        or config.POLLTIME < 0
+    ):
+        errors.append("POLLTIME must be a non-negative integer")
+
+    if errors:
+        for error in errors:
+            print(f"Configuration error: {error}", file=sys.stderr)
+        return 1
+
+    print("HoverConfig():")
+    print(f"    USERNAME = {config.USERNAME}")
+    print("    PASSWORD = <redacted>")
+    print("    TOPTKEY = <redacted>")
+    print(f"    DNS_IDS = {pp.pformat(config.DNS_IDS)}")
+    print(f"    LOGFILE = {config.LOGFILE}")
+    print(f"    SERVICE = {config.SERVICE}")
+    print(f"    POLLTIME = {config.POLLTIME}")
+    print("Configuration is valid (offline check; Hover access was not verified).")
+    return 0
 
 
 def _main(config):
@@ -183,15 +233,30 @@ def _main(config):
 
 def main():  # pragma: no cover
     args = _parse_args(sys.argv[1:])
-    config = HoverConfig(args)
-
-    configure_logging(args.logging_level, config.LOGFILE)
-
     if args.test:
-        # import doctest
-        # print(doctest.testmod())
-        pp.pprint(config)
-        return 0
+        try:
+            config = HoverConfig(args)
+        except SystemExit as exc:
+            if exc.code != 1:
+                raise
+            print(
+                f"Configuration file not found; created default: {args.config_file}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        except KeyError as exc:
+            print(
+                f"Missing configuration value or environment variable: {exc}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        except (json.JSONDecodeError, UnicodeDecodeError, OSError, TypeError) as exc:
+            print(f"Unable to load configuration: {exc}", file=sys.stderr)
+            sys.exit(1)
+        sys.exit(_test_config(config))
+
+    config = HoverConfig(args)
+    configure_logging(args.logging_level, config.LOGFILE)
 
     ret_code = _main(config)
     sys.exit(ret_code)

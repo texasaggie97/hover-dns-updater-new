@@ -51,17 +51,30 @@ jobs:
             --rm --network none
             --env USERNAME=ci-user
             --env PASSWORD=ci-password
-            --env TOPTKEY=JBSWY3DPEBLW64TMMQ======
             --env DNS1=ci-dns
             --env LOGFILE=/tmp/ci.log
           )
-          script_output="$(docker run "${options[@]}" "$PRODUCTION_TEST_TAG" \
+          script_output="$(docker run "${options[@]}" --env TOPTKEY=JBSWY3DPEBLW64TMMQ====== \
+            "$PRODUCTION_TEST_TAG" \
             python hover-dns-updater.py --service --poll-time 123 --test)"
-          command_output="$(docker run "${options[@]}" "$PRODUCTION_TEST_TAG" \
+          command_output="$(docker run "${options[@]}" --env TOPTKEY=JBSWY3DPEBLW64TMMQ====== \
+            "$PRODUCTION_TEST_TAG" \
             hover-dns-updater --service --poll-time 123 --test)"
           test "$script_output" = "$command_output"
           grep -Fx '    USERNAME = ci-user' <<< "$script_output"
+          grep -Fx '    PASSWORD = <redacted>' <<< "$script_output"
+          grep -Fx '    TOPTKEY = <redacted>' <<< "$script_output"
+          if [[ "$script_output" == *ci-password* || "$script_output" == *JBSWY3DPEBLW64TMMQ* ]]; then
+            echo 'Configuration check exposed a secret' >&2
+            exit 1
+          fi
           grep -Fx "    DNS_IDS = ['ci-dns']" <<< "$script_output"
           grep -Fx '    SERVICE = True' <<< "$script_output"
           grep -Fx '    POLLTIME = 123' <<< "$script_output"
 
+          if invalid_output="$(docker run "${options[@]}" --env TOPTKEY=invalid-key \
+            "$PRODUCTION_TEST_TAG" python hover-dns-updater.py --test 2>&1)"; then
+            echo 'Invalid TOTP key was accepted' >&2
+            exit 1
+          fi
+          grep -F 'TOPTKEY must be a valid Base32 TOTP key' <<< "$invalid_output"
