@@ -6,6 +6,7 @@ from unittest.mock import Mock, call
 import pytest
 import requests
 
+from hover_dns_updater.config import HoverConfig
 from hover_dns_updater.main import _main, _parse_args, configure_logging
 
 
@@ -39,6 +40,7 @@ def test_parse_logging_levels(arguments, expected):
         ["--unknown"],
         ["--config-file"],
         ["--poll-time"],
+        ["--poll-time", "not-a-number"],
         ["--log-file"],
     ],
 )
@@ -68,10 +70,26 @@ def test_parse_defaults_and_options():
     )
     assert (args.service, args.poll_time, args.test, args.log_file) == (
         True,
-        "30",
+        30,
         True,
         "test.log",
     )
+
+
+def test_service_uses_numeric_cli_poll_time(sample_config_file, mocker):
+    args = _parse_args(
+        ["--config-file", str(sample_config_file), "--service", "--poll-time", "30"]
+    )
+    config = HoverConfig(args)
+    client = mocker.patch("hover_dns_updater.main.HoverAPI").return_value
+    sleep = mocker.patch(
+        "hover_dns_updater.main.time.sleep", side_effect=KeyboardInterrupt
+    )
+
+    assert _main(config) == 0
+    client.update.assert_called_once_with()
+    sleep.assert_called_once_with(30)
+    assert isinstance(sleep.call_args.args[0], int)
 
 
 @pytest.mark.parametrize("level", [logging.DEBUG, logging.INFO, logging.WARNING])
