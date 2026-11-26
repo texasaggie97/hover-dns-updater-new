@@ -7,6 +7,112 @@ from unittest.mock import Mock
 from hover_dns_updater.config import HoverConfig
 
 
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("field", "environment", "attribute"),
+    [
+        ("username", "USERNAME", "USERNAME"),
+        ("password", "PASSWORD", "PASSWORD"),
+        ("toptkey", "TOPTKEY", "TOPTKEY"),
+        ("logfile", "LOGFILE", "LOGFILE"),
+    ],
+)
+@pytest.mark.parametrize("value", ["from-environment", ""])
+def test_config_substitutes_environment_values(
+    field,
+    environment,
+    attribute,
+    value,
+    sample_config_data,
+    sample_config_file,
+    mock_args,
+    monkeypatch,
+):
+    sample_config_data[field] = "ENV"
+    sample_config_file.write_text(json.dumps(sample_config_data))
+    monkeypatch.setenv(environment, value)
+
+    assert getattr(HoverConfig(mock_args), attribute) == value
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("field", "environment"),
+    [
+        ("username", "USERNAME"),
+        ("password", "PASSWORD"),
+        ("toptkey", "TOPTKEY"),
+        ("logfile", "LOGFILE"),
+    ],
+)
+def test_config_missing_environment_value_reports_name(
+    field, environment, sample_config_data, sample_config_file, mock_args, monkeypatch
+):
+    sample_config_data[field] = "ENV"
+    sample_config_file.write_text(json.dumps(sample_config_data))
+    monkeypatch.delenv(environment, raising=False)
+
+    with pytest.raises(KeyError) as error:
+        HoverConfig(mock_args)
+    assert error.value.args == (environment,)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("argument", "attribute", "override"),
+    [
+        ("service", "SERVICE", True),
+        ("service", "SERVICE", False),
+        ("poll_time", "POLLTIME", 0),
+        ("poll_time", "POLLTIME", 120),
+        ("log_file", "LOGFILE", ""),
+        ("log_file", "LOGFILE", "override.log"),
+    ],
+)
+def test_config_explicit_cli_overrides(
+    argument, attribute, override, sample_config_data, sample_config_file, mock_args
+):
+    sample_config_file.write_text(json.dumps(sample_config_data))
+    setattr(mock_args, argument, override)
+
+    assert getattr(HoverConfig(mock_args), attribute) == override
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("dns_ids", "environment", "expected"),
+    [
+        (["ENV"], {}, []),
+        (["ENV"], {"DNS1": "first", "DNS2": "second"}, ["first", "second"]),
+        (["ENV"], {"DNS1": "first", "DNS3": "third"}, ["first"]),
+        (["ENV", "literal"], {"DNS1": "first"}, ["ENV", "literal"]),
+    ],
+)
+def test_config_dns_environment_sequence(
+    dns_ids,
+    environment,
+    expected,
+    sample_config_data,
+    sample_config_file,
+    mock_args,
+    monkeypatch,
+):
+    sample_config_data["dns_ids"] = dns_ids
+    sample_config_file.write_text(json.dumps(sample_config_data))
+    for key, value in environment.items():
+        monkeypatch.setenv(key, value)
+
+    assert HoverConfig(mock_args).DNS_IDS == expected
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("contents", ["", "{", "[] trailing"])
+def test_config_rejects_malformed_json(contents, sample_config_file, mock_args):
+    sample_config_file.write_text(contents)
+    with pytest.raises(json.JSONDecodeError):
+        HoverConfig(mock_args)
+
+
 class TestHoverConfigInitialization:
     """Tests for HoverConfig initialization and defaults."""
 

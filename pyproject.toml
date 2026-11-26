@@ -34,6 +34,10 @@ markers = [
     "integration: multi-module integration tests",
 ]
 
+[tool.coverage.paths]
+# The installer test executes a temporary installed copy of this package.
+source = ["src/hover_dns_updater", "*/etc/hover-dns-updater/src/hover_dns_updater"]
+
 [tool.flake8]
 show_source = true
 # We recommend setting your editor's visual guide to 79 but allow overflow to
