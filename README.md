@@ -90,57 +90,81 @@ Install Ubuntu service:
 -   Option - Verify service started correctly
     sudo service hover-dns-updater status
 
-Create Docker container
------------------------
+Docker
+------
 
->     docker build -t hover-dns-updater . ; docker tag hover-dns-updater texasaggie97/hover-dns-updater:latest texasaggie97/hover-dns-updater:vX.X.X ; docker push texasaggie97/hover-dns-updater
 
-RancherOS
----------
+### Create Docker container
 
-Here are the docker-compose.yml and rancher-compose.yml to easily recreate the container.
+Build the image used by Docker Compose:
+
+```sh
+docker build -t texasaggie97/hover-dns-updater:latest .
+```
+
+To publish a release, replace `vX.X.X` with the release version:
+
+```sh
+docker tag texasaggie97/hover-dns-updater:latest texasaggie97/hover-dns-updater:vX.X.X
+docker push texasaggie97/hover-dns-updater:latest
+docker push texasaggie97/hover-dns-updater:vX.X.X
+```
+
+### hover.env
+
+Save the following as `hover.env` in the same directory as `docker-compose.yml`.
+Replace the placeholders with your Hover credentials, TOTP key, and DNS record
+IDs. Add or remove `DNS` entries as needed, numbering them consecutively from
+`DNS1`. Keep this file private and do not commit it to source control.
+
+```
+USERNAME=hover_dns_username
+PASSWORD=hover_dns_password
+TOPTKEY=hover_dns_totp_key
+DNS1=hover_dns_record_1
+DNS2=hover_dns_record_2
+LOGFILE=/logs/docker-hover-dns-updater.log
+```
 
 ### docker-compose.yml:
 
->     version: '2'
->     volumes:
->         logs:
->             external: true
->             driver: rancher-nfs
->
->     services:
->         hover-dns-updater:
->             image: texasaggie97/hover-dns-updater
->             environment:
->                 USERNAME: "username"
->                 PASSWORD: "password"
->                 TOPTKEY: "secret code"
->                 DNS1: "dns00000000"
->                 DNS2: "dns00000001"
->                 LOGFILE: "/logs/docker-hover-dns-updater.log"
->             stdin_open: true
->             working_dir: /hover-dns-updater
->             volumes:
->             - logs:/logs
->             tty: true
->             command:
->             - python
->             - hover-dns-updater.py
->             - --service
->             labels:
->                 io.rancher.container.pull_image: always
+```yaml
+---
+name: hover-dns-updater
+services:
+  hover-dns-updater:
+    image: texasaggie97/hover-dns-updater:latest
+    container_name: hover-dns-updater
+    restart: unless-stopped
+    env_file:
+      - ./hover.env
+    volumes:
+      - "./logs:/logs"
+    command: ["python", "hover-dns-updater.py", "--service"]
+    healthcheck:
+      test: ["CMD-SHELL", "find \"$${HOVER_HEALTHCHECK_FILE}\" -type f -mmin -15 -print | grep -q ."]
+      interval: 5m
+      timeout: 10s
+      retries: 3
+      start_period: 2m
+```
 
-### rancher-compose.yml:
+Save the example as `docker-compose.yml` alongside `hover.env`. From that
+directory, start the container and check its status:
 
->     version: '2'
->     services:
->         alarmserver:
->             scale: 1
->             start_on_create: true
->         hover-dns-updater:
->             scale: 1
->             start_on_create: true
+```sh
+docker compose up -d
+docker compose ps
+```
 
+Use an image built from this version before enabling the healthcheck. The
+image records a timestamp after each completed update cycle, including cycles
+that require no DNS changes. The healthcheck requires a successful cycle
+within the last 15 minutes; increase `-mmin -15` if the polling interval is
+longer than the default 10 minutes, allowing extra time for retries. The
+timestamp is cleared when the service starts. A healthy status does not
+independently verify the DNS records, and Docker does not automatically
+restart a container solely because it becomes unhealthy.
 
 Contributing
 ============

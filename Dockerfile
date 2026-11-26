@@ -38,6 +38,7 @@ ADD tests /hover-dns-updater/tests
 RUN poetry run pytest tests/
 
 FROM base AS production
+ENV HOVER_HEALTHCHECK_FILE=/tmp/hover-dns-updater-health
 # Run app.py when the container launches
 CMD ["python", "hover-dns-updater.py", "--service"]
 

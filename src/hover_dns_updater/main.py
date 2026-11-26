@@ -5,9 +5,11 @@ Based on a script by Andrew Barilla: https://gist.github.com/andybarilla/b0dd93e
 
 import logging
 import logging.handlers
+import os
 import pprint
 import sys
 import time
+from pathlib import Path
 
 import requests
 
@@ -111,6 +113,17 @@ def _parse_args(argv):
 
 
 def _main(config):
+    healthcheck_file = os.environ.get("HOVER_HEALTHCHECK_FILE")
+    healthcheck_path = (
+        Path(healthcheck_file) if config.SERVICE and healthcheck_file else None
+    )
+    if healthcheck_path is not None:
+        try:
+            healthcheck_path.unlink(missing_ok=True)
+        except OSError as e:
+            logging.error("Unable to clear healthcheck timestamp: %s", e)
+            return 1
+
     client = None
     dns_initialized = False
     retry_delay = 10
@@ -127,6 +140,12 @@ def _main(config):
                 dns_initialized = True
             phase = "update"
             client.update()
+            if healthcheck_path is not None:
+                try:
+                    healthcheck_path.touch()
+                except OSError as e:
+                    logging.error("Unable to update healthcheck timestamp: %s", e)
+                    return 1
             if retry_attempt:
                 logging.info(
                     "Network recovered after %s failed request(s); update succeeded",

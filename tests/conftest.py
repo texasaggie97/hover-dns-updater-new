@@ -111,3 +111,4 @@ def cleanup_dns_env_vars(monkeypatch):
     monkeypatch.delenv("USERNAME", raising=False)
     monkeypatch.delenv("PASSWORD", raising=False)
     monkeypatch.delenv("TOPTKEY", raising=False)
+    monkeypatch.delenv("HOVER_HEALTHCHECK_FILE", raising=False)
