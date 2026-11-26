@@ -104,9 +104,7 @@ class TestHoverConfigLoading:
         config = HoverConfig(args)
         assert config.USERNAME == "envuser"
 
-    def test_config_env_var_substitution_dns_ids(
-        self, sample_config_file, monkeypatch
-    ):
+    def test_config_env_var_substitution_dns_ids(self, sample_config_file, monkeypatch):
         """Test environment variable substitution for DNS_IDS."""
         config_data = {
             "username": "testuser",
@@ -312,14 +310,10 @@ class TestHoverAPIDNSOperations:
         api.update()
 
         # Verify no PUT request was made
-        put_calls = [
-            c for c in request_mock.call_args_list if c[0][0].lower() == "put"
-        ]
+        put_calls = [c for c in request_mock.call_args_list if c[0][0].lower() == "put"]
         assert len(put_calls) == 0
 
-    def test_api_update_ip_changed(
-        self, sample_config_data, mocker, mock_dns_response
-    ):
+    def test_api_update_ip_changed(self, sample_config_data, mocker, mock_dns_response):
         """Test that update makes request when IP has changed."""
         config = Mock()
         config.USERNAME = sample_config_data["username"]
@@ -377,8 +371,9 @@ class TestHoverAPIDNSOperations:
 
         # Verify PUT request was made
         put_calls = [
-            c for c in request_mock.call_args_list if len(c[0]) > 0
-            and c[0][0].lower() == "put"
+            c
+            for c in request_mock.call_args_list
+            if len(c[0]) > 0 and c[0][0].lower() == "put"
         ]
         assert len(put_calls) == 1
         assert "203.0.113.45" in str(put_calls[0])
@@ -469,9 +464,7 @@ class TestMainLoop:
         # Should complete successfully (0 return code)
         assert result == 0
 
-    def test_main_handles_network_error_non_service(
-        self, sample_config_data, mocker
-    ):
+    def test_main_handles_network_error_non_service(self, sample_config_data, mocker):
         """Test that _main handles network errors in non-service mode."""
         config = Mock()
         config.USERNAME = sample_config_data["username"]

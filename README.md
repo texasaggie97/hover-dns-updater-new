@@ -29,7 +29,7 @@ Installation
 Prerequisites:
 --------------
 
-- Python 3.10
+- Python 3.15
     - [Download](https://www.python.org/downloads/)
 
 - pip
@@ -38,7 +38,7 @@ Prerequisites:
     - `pip install -U pip`
 
 - Poetry
-    - `pip install -U poetry==1.8.2`
+    - `pip install -U poetry==2.5.2`
     - `poetry install` - this will create the poetry venv with all dependencies installed
 
 After installation, run `poetry run hover-dns-updater --help` for the
@@ -74,6 +74,8 @@ Install Ubuntu service:
 -   Copy INSTALL.sh, hover-dns-updater.service, hover-dns-updater.py, and
     the src directory (preserving its directory structure) to a folder on
     your Ubuntu system
+-   Ensure `python3.15` and the required dependencies are available to the
+    installer and systemd service.
 -   ./INSTALL.sh
 -   This will install and enable, but not start, the hover-dns-updater
     service
@@ -181,9 +183,8 @@ poetry run pytest tests/ --cov-fail-under=80
 ```
 
 The suite reports coverage in the terminal and writes `coverage.xml`. CI
-enforces 80% statement coverage on Python 3.10 and 3.11 and uploads the
-Python 3.11 report to Coveralls. The package declares Python 3.9 or newer;
-Python 3.9 is not currently tested in CI.
+enforces 80% statement coverage on Python 3.15 and uploads the report to
+Coveralls. Python 3.15 is the explicitly supported and tested version.
 
 Bugs / Feature Requests
 =======================

@@ -26,7 +26,7 @@ for index, arg in enumerate(args):
     if arg == "/etc" or arg.startswith("/etc/"):
         args[index] = root + arg
 
-if args[0] == "python3":
+if args[0] == "python3.15":
     args[0] = sys.executable
 
 sys.exit(subprocess.run(args, check=False).returncode)
@@ -72,7 +72,9 @@ def test_installer_deploys_package_and_generates_default_config(tmp_path):
         for line in service_file.read_text().splitlines()
         if line.startswith("ExecStart")
     )
-    service_args = shlex.split(exec_start)[2:]
+    command = shlex.split(exec_start)
+    assert command[:2] == ["/usr/bin/env", "python3.15"]
+    service_args = command[3:]
     for index, arg in enumerate(service_args):
         if arg.startswith("/etc/hover-dns-updater/"):
             service_args[index] = str(install_dir) + arg.removeprefix(

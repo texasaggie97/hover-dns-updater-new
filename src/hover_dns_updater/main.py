@@ -16,7 +16,6 @@ import requests
 from .api import HoverAPI
 from .config import HoverConfig
 
-
 pp = pprint.PrettyPrinter(width=120)
 
 

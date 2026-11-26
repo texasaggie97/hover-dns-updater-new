@@ -11,7 +11,6 @@ import requests
 from hover_dns_updater.config import HoverConfig
 from hover_dns_updater.main import _main, _parse_args, configure_logging
 
-
 pytestmark = pytest.mark.unit
 
 

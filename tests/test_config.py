@@ -126,20 +126,22 @@ class TestHoverConfigInitialization:
         """Test that all required configuration fields are loaded."""
         config = HoverConfig(mock_args)
 
-        assert hasattr(config, 'USERNAME')
-        assert hasattr(config, 'PASSWORD')
-        assert hasattr(config, 'TOPTKEY')
-        assert hasattr(config, 'DNS_IDS')
-        assert hasattr(config, 'SERVICE')
-        assert hasattr(config, 'POLLTIME')
-        assert hasattr(config, 'LOGFILE')
+        assert hasattr(config, "USERNAME")
+        assert hasattr(config, "PASSWORD")
+        assert hasattr(config, "TOPTKEY")
+        assert hasattr(config, "DNS_IDS")
+        assert hasattr(config, "SERVICE")
+        assert hasattr(config, "POLLTIME")
+        assert hasattr(config, "LOGFILE")
 
     def test_config_service_flag_defaults_to_false(self, sample_config_file, mock_args):
         """Test that SERVICE flag defaults to False from config file."""
         config = HoverConfig(mock_args)
         assert config.SERVICE is False
 
-    def test_config_poll_time_defaults_to_config_value(self, sample_config_file, mock_args):
+    def test_config_poll_time_defaults_to_config_value(
+        self, sample_config_file, mock_args
+    ):
         """Test that POLLTIME defaults to value from config file."""
         config = HoverConfig(mock_args)
         assert config.POLLTIME == 600
@@ -335,7 +337,9 @@ class TestHoverConfigCLIOverrides:
 class TestHoverConfigEnvVarSubstitution:
     """Tests for environment variable substitution in config."""
 
-    def test_config_env_var_substitution_password(self, sample_config_file, monkeypatch):
+    def test_config_env_var_substitution_password(
+        self, sample_config_file, monkeypatch
+    ):
         """Test environment variable substitution for PASSWORD."""
         config_data = {
             "username": "testuser",
@@ -423,7 +427,9 @@ class TestHoverConfigEnvVarSubstitution:
         with pytest.raises((KeyError, ValueError)):
             HoverConfig(args)
 
-    def test_config_env_var_dns_ids_maintains_order(self, sample_config_file, monkeypatch):
+    def test_config_env_var_dns_ids_maintains_order(
+        self, sample_config_file, monkeypatch
+    ):
         """Test that DNS ID order is maintained from environment variables."""
         config_data = {
             "username": "testuser",
