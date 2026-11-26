@@ -157,7 +157,7 @@ poetry run pytest tests/ --cov-fail-under=80
 ```
 
 The suite reports coverage in the terminal and writes `coverage.xml`. CI
-enforces 80% statement coverage on Python 3.10, 3.11, and 3.12. Coveralls
+enforces 80% statement coverage on Python 3.10 and 3.11. Coveralls
 upload is currently disabled, so the existing badge may not reflect current
 coverage. The package declares Python 3.9 or newer; Python 3.9 is not
 currently tested in CI.

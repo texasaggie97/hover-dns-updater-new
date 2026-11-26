@@ -37,5 +37,5 @@ formatting changes. Tests can be selected by file or with the `unit` and
 Add focused tests for new behavior and regressions, using mocks and fixtures
 for external services rather than requiring Hover credentials or network access.
 
-CI tests Python 3.10, 3.11, and 3.12. The declared minimum is Python 3.9,
+CI tests Python 3.10 and 3.11. The declared minimum is Python 3.9,
 which is not currently in the CI matrix.

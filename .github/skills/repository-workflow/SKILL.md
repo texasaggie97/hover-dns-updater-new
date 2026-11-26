@@ -62,7 +62,7 @@ Run the smallest relevant tests first, and run broader checks when needed. The
 Python CI workflow runs Black in formatting mode before pflake8 and pytest;
 `black --check` above does not modify files. Formatting the whole repository
 can change unrelated files, so inspect its effects before including them.
-CI tests Python 3.10, 3.11, and 3.12 and enforces 80% statement coverage.
+CI tests Python 3.10 and 3.11 and enforces 80% statement coverage.
 The Coveralls upload step is currently disabled.
 Check the Docker workflow and Dockerfile when changing container behavior.
 
