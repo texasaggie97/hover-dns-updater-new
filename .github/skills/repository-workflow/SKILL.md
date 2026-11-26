@@ -52,7 +52,7 @@ dependency manifest changes.
 Use the local environment's executables explicitly:
 
 ```sh
-.venv/bin/python -m pytest tests/
+.venv/bin/python -m pytest tests/ --cov-fail-under=80
 .venv/bin/black --check .
 .venv/bin/pflake8 hover-dns-updater.py src tests
 VIRTUAL_ENV="$PWD/.venv" PATH="$PWD/.venv/bin:$PATH" poetry build
@@ -62,6 +62,8 @@ Run the smallest relevant tests first, and run broader checks when needed. The
 Python CI workflow runs Black in formatting mode before pflake8 and pytest;
 `black --check` above does not modify files. Formatting the whole repository
 can change unrelated files, so inspect its effects before including them.
+CI tests Python 3.10, 3.11, and 3.12 and enforces 80% statement coverage.
+The Coveralls upload step is currently disabled.
 Check the Docker workflow and Dockerfile when changing container behavior.
 
 Always restrict local pflake8 to project paths as shown above. Flake8 6 does
