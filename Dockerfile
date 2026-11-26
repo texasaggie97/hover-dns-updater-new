@@ -33,6 +33,7 @@ RUN poetry install --no-interaction --no-ansi
 ENV NAME=hover-dns-updater
 
 FROM base AS test
+ADD INSTALL.sh hover-dns-updater.service /hover-dns-updater/
 ADD tests /hover-dns-updater/tests
 RUN poetry run pytest tests/
 
