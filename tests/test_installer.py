@@ -26,7 +26,7 @@ for index, arg in enumerate(args):
     if arg == "/etc" or arg.startswith("/etc/"):
         args[index] = root + arg
 
-if args[0] == "python3":
+if args[0] == "python3.15":
     args[0] = sys.executable
 
 sys.exit(subprocess.run(args, check=False).returncode)
@@ -72,7 +72,9 @@ def test_installer_deploys_package_and_generates_default_config(tmp_path):
         for line in service_file.read_text().splitlines()
         if line.startswith("ExecStart")
     )
-    service_args = shlex.split(exec_start)[2:]
+    command = shlex.split(exec_start)
+    assert command[:2] == ["/usr/bin/env", "python3.15"]
+    service_args = command[3:]
     for index, arg in enumerate(service_args):
         if arg.startswith("/etc/hover-dns-updater/"):
             service_args[index] = str(install_dir) + arg.removeprefix(
@@ -118,3 +120,200 @@ def test_script_and_installed_command_match_from_another_directory(
     assert script.stderr.replace(
         "hover-dns-updater.py", "hover-dns-updater"
     ).split() == (command.stderr.split())
+
+
+@pytest.mark.parametrize("installed", [False, True])
+@pytest.mark.parametrize(
+    ("toptkey", "poll_time"), [("JBSWY3DPEBLW64TMMQ======", 600), ("mzxw6", 0)]
+)
+def test_offline_config_check_redacts_secrets_and_succeeds(
+    tmp_path, sample_config_data, installed, toptkey, poll_time
+):
+    sample_config_data["toptkey"] = toptkey
+    sample_config_data["poll-time"] = poll_time
+    config_path = tmp_path / "config.json"
+    config_path.write_text(json.dumps(sample_config_data))
+    log_path = tmp_path / "test.log"
+    command = (
+        [str(Path(sys.executable).parent / "hover-dns-updater")]
+        if installed
+        else [sys.executable, str(REPOSITORY_ROOT / "hover-dns-updater.py")]
+    )
+    result = subprocess.run(
+        [
+            *command,
+            "--config-file",
+            str(config_path),
+            "--test",
+            "--log-file",
+            str(log_path),
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "PASSWORD = <redacted>" in result.stdout
+    assert "TOPTKEY = <redacted>" in result.stdout
+    assert sample_config_data["password"] not in result.stdout + result.stderr
+    assert sample_config_data["toptkey"] not in result.stdout + result.stderr
+    assert "Hover access was not verified" in result.stdout
+    assert not log_path.exists()
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("username", "", "USERNAME"),
+        ("password", " ", "PASSWORD"),
+        ("toptkey", "", "TOPTKEY"),
+        ("toptkey", "invalid-secret!", "Base32"),
+        ("dns_ids", [], "DNS_IDS"),
+        ("dns_ids", [""], "DNS_IDS"),
+        ("dns_ids", [123], "DNS_IDS"),
+        ("dns_ids", None, "configuration"),
+        ("poll-time", -1, "POLLTIME"),
+        ("poll-time", "60", "POLLTIME"),
+        ("poll-time", True, "POLLTIME"),
+        ("logfile", 123, "LOGFILE"),
+        ("logfile", "", "LOGFILE"),
+        ("logfile", "   ", "LOGFILE"),
+        ("logfile", [], "LOGFILE"),
+    ],
+)
+def test_offline_config_check_rejects_invalid_values(
+    tmp_path, sample_config_data, field, value, message
+):
+    sample_config_data[field] = value
+    config_path = tmp_path / "config.json"
+    config_path.write_text(json.dumps(sample_config_data))
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(REPOSITORY_ROOT / "hover-dns-updater.py"),
+            "--config-file",
+            str(config_path),
+            "--test",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert message in result.stderr
+    assert "testpass" not in result.stdout + result.stderr
+    assert "invalid-secret!" not in result.stdout + result.stderr
+    assert "JBSWY3DPEBLW64TMMQ======" not in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("logfile", [None, "output.log"])
+def test_offline_config_check_accepts_logfile_without_creating_it(
+    tmp_path, sample_config_data, logfile
+):
+    sample_config_data["logfile"] = logfile
+    config_path = tmp_path / "config.json"
+    config_path.write_text(json.dumps(sample_config_data))
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(REPOSITORY_ROOT / "hover-dns-updater.py"),
+            "--config-file",
+            str(config_path),
+            "--test",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert not (tmp_path / "output.log").exists()
+
+
+def test_offline_config_check_validates_overridden_logfile(
+    tmp_path, sample_config_data
+):
+    sample_config_data["logfile"] = 123
+    config_path = tmp_path / "config.json"
+    config_path.write_text(json.dumps(sample_config_data))
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(REPOSITORY_ROOT / "hover-dns-updater.py"),
+            "--config-file",
+            str(config_path),
+            "--test",
+            "--log-file",
+            "",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "LOGFILE" in result.stderr
+
+
+def test_installed_config_check_returns_failure_for_invalid_configuration(
+    tmp_path, sample_config_data
+):
+    sample_config_data["poll-time"] = -1
+    config_path = tmp_path / "config.json"
+    config_path.write_text(json.dumps(sample_config_data))
+    result = subprocess.run(
+        [
+            str(Path(sys.executable).parent / "hover-dns-updater"),
+            "--config-file",
+            str(config_path),
+            "--test",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "POLLTIME" in result.stderr
+
+
+def test_offline_config_check_reports_missing_environment_and_bad_json(
+    tmp_path, sample_config_data, monkeypatch
+):
+    config_path = tmp_path / "config.json"
+    sample_config_data["username"] = "ENV"
+    config_path.write_text(json.dumps(sample_config_data))
+    monkeypatch.delenv("USERNAME", raising=False)
+    command = [
+        sys.executable,
+        str(REPOSITORY_ROOT / "hover-dns-updater.py"),
+        "--config-file",
+        str(config_path),
+        "--test",
+    ]
+    result = subprocess.run(command, cwd=tmp_path, capture_output=True, text=True)
+    assert result.returncode != 0
+    assert "USERNAME" in result.stderr
+
+    config_path.write_text("{")
+    result = subprocess.run(command, cwd=tmp_path, capture_output=True, text=True)
+    assert result.returncode != 0
+    assert "Unable to load configuration" in result.stderr
+
+
+def test_offline_config_check_creates_missing_default_config(tmp_path):
+    config_path = tmp_path / "missing.json"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(REPOSITORY_ROOT / "hover-dns-updater.py"),
+            "--config-file",
+            str(config_path),
+            "--test",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "created default" in result.stderr
+    assert json.loads(config_path.read_text())["username"] == "ENV"

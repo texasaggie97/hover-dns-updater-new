@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM python:3.10-slim AS base
+FROM python:3.15-slim AS base
 
 # Set the working directory to /app
 WORKDIR /hover-dns-updater
@@ -15,7 +15,7 @@ ENV PYTHONFAULTHANDLER=1 \
   POETRY_VIRTUALENVS_CREATE=false \
   POETRY_CACHE_DIR='/var/cache/pypoetry' \
   POETRY_HOME='/usr/local' \
-  POETRY_VERSION=1.8.3
+  POETRY_VERSION=2.5.2
   # ^^^
   # Make sure to update it
 

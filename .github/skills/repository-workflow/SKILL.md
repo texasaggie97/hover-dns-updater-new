@@ -31,7 +31,7 @@ With a compatible Python interpreter and Poetry installed, create the
 environment if it does not already exist:
 
 ```sh
-python3 -m venv .venv
+python3.15 -m venv .venv
 ```
 
 Install the locked project and development dependencies into that environment.
@@ -54,23 +54,21 @@ Use the local environment's executables explicitly:
 ```sh
 .venv/bin/python -m pytest tests/ --cov-fail-under=80
 .venv/bin/black --check .
-.venv/bin/pflake8 hover-dns-updater.py src tests
+.venv/bin/flake8 hover-dns-updater.py src tests
 VIRTUAL_ENV="$PWD/.venv" PATH="$PWD/.venv/bin:$PATH" poetry build
 ```
 
 Run the smallest relevant tests first, and run broader checks when needed. The
-Python CI workflow runs Black in formatting mode before pflake8 and pytest;
+Python CI workflow runs Black in formatting mode before flake8 and pytest;
 `black --check` above does not modify files. Formatting the whole repository
 can change unrelated files, so inspect its effects before including them.
-CI tests Python 3.10 and 3.11, enforces 80% statement coverage, and uploads
-the Python 3.11 coverage report to Coveralls.
+CI tests Python 3.15, enforces 80% statement coverage, and uploads
+the Python 3.15 coverage report to Coveralls.
 Check the Docker workflow and Dockerfile when changing container behavior.
 
-Always restrict local pflake8 to project paths as shown above. Flake8 6 does
-not exclude `.venv` by default, so an unrestricted scan can lint installed
-dependencies and produce enormous output. The root `.flake8` configuration
-takes precedence over the corresponding `pyproject.toml` settings; keep
-`.venv` excluded in both files.
+Always restrict local flake8 to project paths as shown above, so an unrestricted
+scan does not lint installed dependencies. The root `.flake8` file configures
+flake8 and excludes `.venv`.
 
 ## Maintenance
 

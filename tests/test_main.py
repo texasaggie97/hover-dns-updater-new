@@ -9,8 +9,7 @@ import pytest
 import requests
 
 from hover_dns_updater.config import HoverConfig
-from hover_dns_updater.main import _main, _parse_args, configure_logging
-
+from hover_dns_updater.main import _main, _parse_args, configure_logging, main
 
 pytestmark = pytest.mark.unit
 
@@ -92,6 +91,18 @@ def test_service_uses_numeric_cli_poll_time(sample_config_file, mocker):
     client.update.assert_called_once_with()
     sleep.assert_called_once_with(30)
     assert isinstance(sleep.call_args.args[0], int)
+
+
+def test_config_check_is_offline(sample_config_file, mocker, capsys):
+    mocker.patch(
+        "sys.argv", ["hover-dns-updater", "-c", str(sample_config_file), "--test"]
+    )
+    update = mocker.patch("hover_dns_updater.main._main")
+    with pytest.raises(SystemExit) as result:
+        main()
+    assert result.value.code == 0
+    update.assert_not_called()
+    assert "offline check" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("level", [logging.DEBUG, logging.INFO, logging.WARNING])

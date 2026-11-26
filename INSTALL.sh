@@ -10,7 +10,7 @@ sudo cp -f ./hover-dns-updater.service /etc/systemd/system/hover-dns-updater.ser
 
 # Run it in test mode to create the config json if it doesn't already exist
 if [ ! -f /etc/hover-dns-updater/hover-dns-updater.json ]; then
-	sudo python3 /etc/hover-dns-updater/hover-dns-updater.py --config-file /etc/hover-dns-updater/hover-dns-updater.json --test
+	sudo python3.15 /etc/hover-dns-updater/hover-dns-updater.py --config-file /etc/hover-dns-updater/hover-dns-updater.json --test
 fi
 
 sudo chown root:root /etc/hover-dns-updater/*
