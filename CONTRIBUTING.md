@@ -19,9 +19,9 @@ Run the full suite and the same coverage gate used in CI:
 ```
 
 The terminal report identifies missing lines, and `coverage.xml` contains the
-machine-readable report. Coverage measures the package in
+machine-readable report uploaded to Coveralls by the Python 3.11 CI job.
+Coverage measures the package in
 `src/hover_dns_updater`; the existing `main()` entry point is excluded.
-The Coveralls upload step is currently disabled.
 
 Run the relevant checks before submitting changes:
 
