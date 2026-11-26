@@ -145,13 +145,22 @@ Here are the docker-compose.yml and rancher-compose.yml to easily recreate the c
 Contributing
 ============
 
-Contributions are welcome!
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for
+development setup and testing guidelines.
 
-## Commands to use
+## Testing
 
-- `poetry run black .` - linter, may update formatting if required
-- `poetry run flake8`
-- `poetry run pytest` - only test currently is a simple one that will pass if the file is loadable
+With the Poetry dependencies installed, run:
+
+```sh
+poetry run pytest tests/ --cov-fail-under=80
+```
+
+The suite reports coverage in the terminal and writes `coverage.xml`. CI
+enforces 80% statement coverage on Python 3.10 and 3.11. Coveralls
+upload is currently disabled, so the existing badge may not reflect current
+coverage. The package declares Python 3.9 or newer; Python 3.9 is not
+currently tested in CI.
 
 Bugs / Feature Requests
 =======================

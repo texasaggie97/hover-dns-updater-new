@@ -2,6 +2,6 @@
 
 1. ~~Readme~~
 2. Add real documentation
-3. Add tests
+3. ~~Add tests~~
 
 
