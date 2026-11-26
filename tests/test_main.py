@@ -1,6 +1,8 @@
 """Unit tests for command-line parsing, logging, and updater orchestration."""
 
 import logging
+import os
+import time
 from unittest.mock import Mock, call
 
 import pytest
@@ -144,6 +146,87 @@ def test_service_reuses_initialized_client(mocker):
     client.get_current_ips.assert_called_once_with()
     assert client.update.call_count == 2
     assert sleep.call_args_list == [call(60), call(60)]
+
+
+def test_healthcheck_clears_stale_timestamp_before_initialization(
+    tmp_path, monkeypatch, mocker
+):
+    marker = tmp_path / "health"
+    marker.touch()
+    monkeypatch.setenv("HOVER_HEALTHCHECK_FILE", str(marker))
+
+    def fail_initialization(config):
+        assert not marker.exists()
+        if factory.call_count > 1:
+            raise KeyboardInterrupt
+        raise requests.ConnectionError("offline")
+
+    factory = mocker.patch(
+        "hover_dns_updater.main.HoverAPI", side_effect=fail_initialization
+    )
+    mocker.patch("hover_dns_updater.main.time.sleep")
+
+    assert _main(Mock(SERVICE=True)) == 0
+    assert not marker.exists()
+
+
+def test_healthcheck_refreshes_only_after_successful_update(
+    tmp_path, monkeypatch, mocker
+):
+    marker = tmp_path / "health"
+    monkeypatch.setenv("HOVER_HEALTHCHECK_FILE", str(marker))
+    client = mocker.patch("hover_dns_updater.main.HoverAPI").return_value
+    old_time = time.time() - 120
+
+    def update():
+        if client.update.call_count == 1:
+            assert not marker.exists()
+        elif client.update.call_count == 2:
+            assert marker.is_file()
+            os.utime(marker, (old_time, old_time))
+            raise requests.ConnectionError("offline")
+        else:
+            assert marker.stat().st_mtime == old_time
+
+    client.update.side_effect = update
+    mocker.patch(
+        "hover_dns_updater.main.time.sleep",
+        side_effect=[None, None, KeyboardInterrupt],
+    )
+
+    assert _main(Mock(SERVICE=True, POLLTIME=60)) == 0
+    assert client.update.call_count == 3
+    assert marker.stat().st_mtime > old_time
+
+
+def test_healthcheck_write_error_returns_failure(tmp_path, monkeypatch, mocker, caplog):
+    marker = tmp_path / "missing-directory" / "health"
+    monkeypatch.setenv("HOVER_HEALTHCHECK_FILE", str(marker))
+    mocker.patch("hover_dns_updater.main.HoverAPI")
+
+    assert _main(Mock(SERVICE=True)) == 1
+    assert "Unable to update healthcheck timestamp" in caplog.text
+
+
+def test_healthcheck_clear_error_returns_failure(tmp_path, monkeypatch, mocker, caplog):
+    monkeypatch.setenv("HOVER_HEALTHCHECK_FILE", str(tmp_path))
+    factory = mocker.patch("hover_dns_updater.main.HoverAPI")
+
+    assert _main(Mock(SERVICE=True)) == 1
+    assert "Unable to clear healthcheck timestamp" in caplog.text
+    factory.assert_not_called()
+
+
+def test_healthcheck_does_not_change_marker_for_one_shot_run(
+    tmp_path, monkeypatch, mocker
+):
+    marker = tmp_path / "health"
+    marker.write_text("unchanged")
+    monkeypatch.setenv("HOVER_HEALTHCHECK_FILE", str(marker))
+    mocker.patch("hover_dns_updater.main.HoverAPI")
+
+    assert _main(Mock(SERVICE=False)) == 0
+    assert marker.read_text() == "unchanged"
 
 
 @pytest.mark.parametrize("phase", ["initialization", "dns", "update"])
