@@ -20,6 +20,7 @@ commands from the repository root.
 - `Dockerfile` defines the container; `INSTALL.sh` and
   `hover-dns-updater.service` install and run the systemd service.
 - `.github/workflows/` contains the Python and Docker CI workflows.
+- `scripts/create-release.sh` publishes release images, Git tags, and GitHub Releases.
 
 ## Isolated Python environment
 
@@ -65,6 +66,9 @@ can change unrelated files, so inspect its effects before including them.
 CI tests Python 3.15, enforces 80% statement coverage, and uploads
 the Python 3.15 coverage report to Coveralls.
 Check the Docker workflow and Dockerfile when changing container behavior.
+Docker CI smoke-tests the production image; the full suite, including release
+script tests, runs in Python CI. The Docker builder installs only runtime
+dependencies into a virtual environment copied to the production stage.
 
 Always restrict local flake8 to project paths as shown above, so an unrestricted
 scan does not lint installed dependencies. The root `.flake8` file configures
