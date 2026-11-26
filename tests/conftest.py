@@ -3,25 +3,7 @@
 import json
 import pytest
 from unittest.mock import Mock
-import importlib.util
-import sys
-from pathlib import Path
-
-
-def _load_hover_dns_updater():
-    """Load the hover-dns-updater module."""
-    spec = importlib.util.spec_from_file_location(
-        "hover_dns_updater",
-        str(Path(__file__).parent.parent / "hover-dns-updater.py")
-    )
-    module = importlib.util.module_from_spec(spec)
-    sys.modules["hover_dns_updater"] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-# Initial import
-_load_hover_dns_updater()
+from hover_dns_updater.constants import default_config
 
 
 @pytest.fixture
@@ -107,8 +89,6 @@ def mock_dns_response():
 @pytest.fixture(autouse=True)
 def cleanup_dns_env_vars(monkeypatch):
     """Automatically clean up DNS environment variables for test isolation."""
-    import hover_dns_updater
-    
     # Save the pristine default_config
     pristine_defaults = {
         "username": "ENV",
@@ -119,11 +99,11 @@ def cleanup_dns_env_vars(monkeypatch):
         "run-as-service": False,
         "poll-time": 600,
     }
-    
+
     # Reset to pristine state before each test
-    hover_dns_updater.default_config.clear()
-    hover_dns_updater.default_config.update(pristine_defaults)
-    
+    default_config.clear()
+    default_config.update(pristine_defaults)
+
     # Remove any DNS1-DNS9 environment variables that may have been set
     for i in range(1, 10):
         monkeypatch.delenv(f"DNS{i}", raising=False)

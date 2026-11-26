@@ -3,8 +3,8 @@
 import pytest
 from unittest.mock import Mock
 
-from src.hover_dns_updater.api import HoverAPI
-from src.hover_dns_updater.exceptions import HoverError
+from hover_dns_updater.api import HoverAPI
+from hover_dns_updater.exceptions import HoverError
 
 
 class TestHoverAPIInitialization:
@@ -447,7 +447,7 @@ class TestHoverAPIDNSIPUpdate:
         ]
         # Must have exactly 2 PUT requests (one for each record)
         assert len(put_calls) == 2, f"Expected exactly 2 PUT requests (one per record), got {len(put_calls)}"
-        
+
         # Verify both records were updated with correct payload
         updated_records = {}
         for call in put_calls:
@@ -460,14 +460,18 @@ class TestHoverAPIDNSIPUpdate:
                 # Get the data payload from kwargs
                 payload = call[1].get('data', {})
                 updated_records[record_id] = payload
-        
+
         # Verify both records were updated with the new IP in payload
         assert len(updated_records) == 2, f"Expected updates for 2 records, got {len(updated_records)}"
         assert "dns123" in updated_records, "dns123 should be updated"
         assert "dns456" in updated_records, "dns456 should be updated"
         # Verify the payload contains the correct new IP
-        assert updated_records["dns123"].get("content") == "203.0.113.45", f"dns123 payload incorrect: {updated_records['dns123']}"
-        assert updated_records["dns456"].get("content") == "203.0.113.45", f"dns456 payload incorrect: {updated_records['dns456']}"
+        assert updated_records["dns123"].get("content") == "203.0.113.45", (
+            f"dns123 payload incorrect: {updated_records['dns123']}"
+        )
+        assert updated_records["dns456"].get("content") == "203.0.113.45", (
+            f"dns456 payload incorrect: {updated_records['dns456']}"
+        )
 
         # Verify cache entries are updated after successful update
         assert api._current_dns_ips["dns123"] == "203.0.113.45"

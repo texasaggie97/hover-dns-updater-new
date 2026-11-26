@@ -7,6 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -59,6 +61,7 @@ def test_installer_deploys_package_and_generates_default_config(tmp_path):
     assert (install_dir / "src/hover_dns_updater/constants.py").is_file()
     assert (install_dir / "src/hover_dns_updater/config.py").is_file()
     assert (install_dir / "src/hover_dns_updater/api.py").is_file()
+    assert (install_dir / "src/hover_dns_updater/main.py").is_file()
     service_file = root / "etc/systemd/system/hover-dns-updater.service"
     assert service_file.is_file()
     config = json.loads((install_dir / "hover-dns-updater.json").read_text())
@@ -77,8 +80,8 @@ def test_installer_deploys_package_and_generates_default_config(tmp_path):
             )
 
     parser_code = (
-        "import runpy, sys; "
-        "runpy.run_path('hover-dns-updater.py')['_parse_args'](sys.argv[1:])"
+        "import sys; sys.path.insert(0, 'src'); "
+        "from hover_dns_updater.main import _parse_args; _parse_args(sys.argv[1:])"
     )
     result = subprocess.run(
         [sys.executable, "-c", parser_code, *service_args],
@@ -87,3 +90,31 @@ def test_installer_deploys_package_and_generates_default_config(tmp_path):
         text=True,
     )
     assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    ("arguments", "expected_status"), [(["--help"], 0), (["--unknown-option"], 2)]
+)
+def test_script_and_installed_command_match_from_another_directory(
+    tmp_path, arguments, expected_status
+):
+    script = subprocess.run(
+        [sys.executable, str(REPOSITORY_ROOT / "hover-dns-updater.py"), *arguments],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    command = subprocess.run(
+        [str(Path(sys.executable).parent / "hover-dns-updater"), *arguments],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+
+    assert script.returncode == command.returncode == expected_status
+    assert script.stdout.replace(
+        "hover-dns-updater.py", "hover-dns-updater"
+    ).split() == (command.stdout.split())
+    assert script.stderr.replace(
+        "hover-dns-updater.py", "hover-dns-updater"
+    ).split() == (command.stderr.split())
