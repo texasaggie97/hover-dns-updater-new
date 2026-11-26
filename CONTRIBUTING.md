@@ -38,3 +38,7 @@ Add focused tests for new behavior and regressions, using mocks and fixtures
 for external services rather than requiring Hover credentials or network access.
 
 CI tests Python 3.15, the explicitly supported version.
+The Docker workflow also builds the production image and smoke-tests its
+entry points and configuration with networking disabled and dummy credentials.
+The existing `--test` option prints configuration, including credentials; use
+only dummy values when testing it in logs.
