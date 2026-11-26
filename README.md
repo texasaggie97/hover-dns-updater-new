@@ -112,6 +112,9 @@ Build the image used by Docker Compose:
 docker build -t texasaggie97/hover-dns-updater:latest .
 ```
 
+The production image contains runtime dependencies only. The full test suite
+runs separately in Python CI; Docker CI smoke-tests the production image.
+
 To publish a release, authenticate Docker to Docker Hub and ensure Git can push
 to the GitHub `origin` remote. Run:
 

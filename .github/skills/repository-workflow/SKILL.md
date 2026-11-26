@@ -66,8 +66,9 @@ can change unrelated files, so inspect its effects before including them.
 CI tests Python 3.15, enforces 80% statement coverage, and uploads
 the Python 3.15 coverage report to Coveralls.
 Check the Docker workflow and Dockerfile when changing container behavior.
-The Docker test stage excludes release-script tests, which run in Python CI
-and require Git and the release script outside the container.
+Docker CI smoke-tests the production image; the full suite, including release
+script tests, runs in Python CI. The Docker builder installs only runtime
+dependencies into a virtual environment copied to the production stage.
 
 Always restrict local flake8 to project paths as shown above, so an unrestricted
 scan does not lint installed dependencies. The root `.flake8` file configures
