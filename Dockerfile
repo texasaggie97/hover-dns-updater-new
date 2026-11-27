@@ -14,6 +14,21 @@ COPY pyproject.toml poetry.lock README.md hover-dns-updater.py hover-update.cfg 
 COPY src ./src
 RUN poetry install --only main --no-interaction --no-ansi
 
+FROM builder AS testing
+
+# git is required by the release script tests.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends git \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN poetry install --no-interaction --no-ansi
+
+COPY INSTALL.sh hover-dns-updater.service ./
+COPY scripts ./scripts
+COPY tests ./tests
+
+CMD ["python", "-m", "pytest", "tests/", "--cov-fail-under=80"]
+
 FROM python:3.15-slim AS production
 
 WORKDIR /hover-dns-updater

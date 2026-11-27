@@ -116,6 +116,15 @@ The production image contains runtime dependencies only. The full test suite
 runs separately in Python CI; Docker CI smoke-tests the production image.
 The Docker Compose instructions below create and start the container.
 
+To run the full pytest suite inside Docker without adding test files or
+development dependencies to the production image, build and run the
+`testing` stage:
+
+```sh
+docker build --target testing -t hover-dns-updater:testing .
+docker run --rm hover-dns-updater:testing
+```
+
 ### hover.env
 
 Save the following as `hover.env` in the same directory as `docker-compose.yml`.
