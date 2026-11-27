@@ -10,7 +10,7 @@ if [[ $# -lt 1 || $# -gt 2 ]]; then
     exit 2
 fi
 
-version=$1
+version=${1#v}
 prerelease=false
 if [[ $# -eq 2 ]]; then
     if [[ $2 != --prerelease ]]; then
@@ -21,7 +21,7 @@ if [[ $# -eq 2 ]]; then
 fi
 
 if [[ ! $version =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
-    echo "Invalid version: use MAJOR.MINOR.PATCH with an optional prerelease suffix (without a leading v)." >&2
+    echo "Invalid version: use MAJOR.MINOR.PATCH with an optional leading v and prerelease suffix." >&2
     exit 2
 fi
 if [[ $prerelease == false && $version == *-* ]]; then
