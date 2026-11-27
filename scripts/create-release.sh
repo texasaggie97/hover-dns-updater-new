@@ -30,9 +30,65 @@ if [[ $prerelease == false && $version == *-* ]]; then
 fi
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-commit=$(git rev-parse --verify 'HEAD^{commit}')
+if ! command -v gh >/dev/null; then
+    echo "GitHub CLI (gh) is required to create a release." >&2
+    exit 1
+fi
+repository=$(git remote get-url --push origin)
 
-readme_versions_pattern='^\|[[:space:]]*Versions[[:space:]]*\|[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+)([[:space:]]*,[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?[[:space:]]*\|$'
+require_clean_worktree() {
+    local changes
+    if ! changes=$(git status --porcelain=v1 --untracked-files=normal --ignore-submodules=none); then
+        echo "Could not check the working tree; release aborted." >&2
+        return 1
+    fi
+    if [[ -n $changes ]]; then
+        printf 'The working tree must be clean before releasing:\n%s\n' "$changes" >&2
+        return 1
+    fi
+}
+
+prepare_release() {
+    local current_branch pull_requests answer
+
+    git fetch "$repository" main
+    if ! current_branch=$(git symbolic-ref --quiet HEAD) || [[ $current_branch != refs/heads/main ]]; then
+        if git show-ref --verify --quiet refs/heads/main; then
+            git checkout main
+        else
+            git checkout -b main FETCH_HEAD
+        fi
+    fi
+    if ! git merge-base --is-ancestor HEAD FETCH_HEAD; then
+        echo "Local main is ahead of or has diverged from the remote main; reconcile it before releasing." >&2
+        return 1
+    fi
+    git merge --ff-only FETCH_HEAD
+
+    if ! pull_requests=$(GH_REPO="$repository" gh api --paginate \
+        'repos/{owner}/{repo}/pulls?state=open&per_page=100' \
+        --jq '.[] | "#\(.number) \(.title) \(.html_url)"'); then
+        echo "Could not retrieve open pull requests; release aborted." >&2
+        return 1
+    fi
+    if [[ -n $pull_requests ]]; then
+        printf 'Open pull requests:\n%s\n' "$pull_requests"
+        if ! read -r -p "Continue with these open pull requests? [y/N] " answer; then
+            echo "No confirmation received; release aborted." >&2
+            return 1
+        fi
+        if [[ ${answer,,} != y && ${answer,,} != yes ]]; then
+            echo "Release aborted." >&2
+            return 1
+        fi
+    fi
+}
+
+require_clean_worktree
+prepare_release
+require_clean_worktree
+
+readme_versions_pattern='^\|[[:space:]]*Versions[[:space:]]*\|[[:space:]]*v([0-9]+\.[0-9]+\.[0-9]+)([[:space:]]*,[[:space:]]*v[0-9]+\.[0-9]+\.[0-9]+-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?[[:space:]]*\|$'
 readme_versions_count=0
 readme_release_version=
 while IFS= read -r line || [[ -n $line ]]; do
@@ -74,7 +130,7 @@ version_is_after() {
 
 if [[ $prerelease == true && $version != *-* ]]; then
     prefix="refs/tags/v${version}-rc."
-    remote_rc_tags=$(git ls-remote --tags --refs origin "${prefix}*")
+    remote_rc_tags=$(git ls-remote --tags --refs "$repository" "${prefix}*")
     max_rc=0
     while IFS=$'\t' read -r _ ref; do
         [[ $ref == "$prefix"* ]] || continue
@@ -94,12 +150,12 @@ fi
 if [[ $prerelease == true ]]; then
     prerelease_base=${version%%-*}
     if version_is_after "$prerelease_base" "$readme_release_version"; then
-        readme_version="${readme_release_version}, ${version}"
+        readme_version="v${readme_release_version}, v${version}"
     else
-        readme_version=$readme_release_version
+        readme_version="v${readme_release_version}"
     fi
 else
-    readme_version=$version
+    readme_version="v${version}"
 fi
 
 tag="v${version}"
@@ -112,17 +168,12 @@ if git show-ref --verify --quiet "refs/tags/$tag"; then
     echo "Local tag $tag already exists." >&2
     exit 1
 fi
-remote_tag=$(git ls-remote --tags --refs origin "refs/tags/$tag")
+remote_tag=$(git ls-remote --tags --refs "$repository" "refs/tags/$tag")
 if [[ -n $remote_tag ]]; then
     echo "Tag $tag already exists on origin." >&2
     exit 1
 fi
 
-if ! command -v gh >/dev/null; then
-    echo "GitHub CLI (gh) is required to create a release." >&2
-    exit 1
-fi
-repository=$(git remote get-url --push origin)
 image=texasaggie97/hover-dns-updater
 build_tags=(-t "$image:$tag")
 release_args=(--repo "$repository" --verify-tag --title "$tag" --generate-notes)
@@ -130,15 +181,6 @@ if [[ $prerelease == false ]]; then
     build_tags+=(-t "$image:latest")
 else
     release_args+=(--prerelease)
-fi
-
-git archive --format=tar "$commit" | docker build "${build_tags[@]}" -
-docker push "$image:$tag"
-git tag "$tag" "$commit"
-git push origin "refs/tags/$tag:refs/tags/$tag"
-gh release create "$tag" "${release_args[@]}"
-if [[ $prerelease == false ]]; then
-    docker push "$image:latest"
 fi
 
 readme_tmp=$(mktemp README.md.XXXXXX)
@@ -155,5 +197,20 @@ awk -v version="$readme_version" '
 ' README.md > "$readme_tmp"
 mv "$readme_tmp" README.md
 trap - EXIT
+
+if ! git diff --quiet -- README.md; then
+    git commit --only -m "Update README versions for $tag" -- README.md
+fi
+commit=$(git rev-parse --verify 'HEAD^{commit}')
+git push origin "HEAD:refs/heads/main"
+
+git archive --format=tar "$commit" | docker build "${build_tags[@]}" -
+docker push "$image:$tag"
+git tag "$tag" "$commit"
+git push origin "refs/tags/$tag:refs/tags/$tag"
+gh release create "$tag" "${release_args[@]}"
+if [[ $prerelease == false ]]; then
+    docker push "$image:latest"
+fi
 
 echo "Published $image:$tag and GitHub release $tag at $commit."
