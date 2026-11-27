@@ -106,8 +106,11 @@ def run_release(release_repo, *args, input_text=None):
     ("args", "tag", "stable"),
     [
         (("1.2.3",), "v1.2.3", True),
+        (("v1.2.3",), "v1.2.3", True),
         (("1.2.4", "--prerelease"), "v1.2.4-rc.1", False),
+        (("v1.2.4", "--prerelease"), "v1.2.4-rc.1", False),
         (("1.2.4-beta.2", "--prerelease"), "v1.2.4-beta.2", False),
+        (("v1.2.4-beta.2", "--prerelease"), "v1.2.4-beta.2", False),
     ],
 )
 def test_publishes_matching_image_and_committed_git_tag(
@@ -147,8 +150,12 @@ def test_publishes_matching_image_and_committed_git_tag(
     "args",
     [
         (),
-        ("v1.2.3",),
+        ("v",),
+        ("vv1.2.3",),
+        ("V1.2.3",),
+        ("v01.2.3",),
         ("1.2.3-rc.1",),
+        ("v1.2.3-rc.1",),
         ("1.2.3", "--bad"),
         ("1.2.3", "--prerelease", "extra"),
     ],

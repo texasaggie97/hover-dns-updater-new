@@ -104,9 +104,9 @@ Docker
 ------
 
 
-### Create Docker container
+### Build the Docker image
 
-Build the image used by Docker Compose:
+From the repository root, build the image used by Docker Compose:
 
 ```sh
 docker build -t texasaggie97/hover-dns-updater:latest .
@@ -114,33 +114,7 @@ docker build -t texasaggie97/hover-dns-updater:latest .
 
 The production image contains runtime dependencies only. The full test suite
 runs separately in Python CI; Docker CI smoke-tests the production image.
-
-To publish a release, authenticate Docker to Docker Hub and the GitHub CLI
-(`gh`) to GitHub, and ensure Git can push to the GitHub `origin` remote. Run:
-
-```sh
-./scripts/create-release.sh 1.2.3
-./scripts/create-release.sh 1.2.4 --prerelease
-```
-
-The script requires a clean working tree, with no staged, unstaged, or untracked
-files (ignored files are allowed). It checks out `main` if necessary and
-fast-forwards it from `main` at the `origin` push
-destination; if local `main` is ahead or has diverged, reconcile it before
-retrying. Git must be able to switch and update branches without overwriting
-local or ignored files. If GitHub has open pull requests, the script lists them
-and asks for confirmation before continuing; without confirmation it exits. It updates
-the `Versions` row, commits the README if it changed, and pushes `main` to
-`origin` before building from committed `HEAD`. Stable releases replace
-the listed version, while a prerelease is also listed when its version is newer
-than the latest stable version. It pushes the versioned image, a matching Git
-tag, and a GitHub Release with generated notes. It marks prereleases on GitHub
-and pushes `latest` only for stable releases.
-For a prerelease without a suffix, the script checks `origin` and uses the next
-RC number after the highest existing matching tag, starting with `-rc.1`.
-Specify a suffix such as `1.2.4-beta.2` with `--prerelease` to use it unchanged.
-If publishing fails partway through, inspect the README commit, remote `main`,
-image, Git tag, and GitHub Release before completing or retrying manually.
+The Docker Compose instructions below create and start the container.
 
 ### hover.env
 
@@ -197,6 +171,44 @@ longer than the default 10 minutes, allowing extra time for retries. The
 timestamp is cleared when the service starts. A healthy status does not
 independently verify the DNS records, and Docker does not automatically
 restart a container solely because it becomes unhealthy.
+
+Releasing
+=========
+
+Before releasing, authenticate Docker to Docker Hub and the GitHub CLI (`gh`)
+to GitHub, and ensure Git can push to the GitHub `origin` remote. The working
+tree must be clean: no staged, unstaged, or untracked changes (ignored files
+are allowed).
+
+Run the script with a version, with or without a leading `v`:
+
+```sh
+./scripts/create-release.sh v1.2.3
+./scripts/create-release.sh v1.2.4 --prerelease
+```
+
+The script:
+
+1. Checks out `main` if necessary and fast-forwards it from `main` at the
+   `origin` push destination. If local `main` is ahead or has diverged,
+   reconcile it before retrying. Git must be able to switch and update
+   branches without overwriting local or ignored files.
+2. Lists open GitHub pull requests and asks for confirmation to continue. It
+   exits if confirmation is not given.
+3. Updates the README `Versions` row, commits it if changed, and pushes `main`
+   to `origin` before building from committed `HEAD`.
+4. Pushes the versioned Docker image and matching Git tag, then creates a
+   GitHub Release with generated notes. It marks prereleases on GitHub and
+   pushes `latest` only for stable releases.
+
+Stable releases replace the listed version; a prerelease is also listed when
+its version is newer than the latest stable version. For a prerelease without a
+suffix, the script checks `origin` and uses the next RC number after the
+highest existing matching tag, starting with `-rc.1`.
+Specify a suffix such as `v1.2.4-beta.2` with `--prerelease` to use it unchanged.
+
+If publishing fails partway through, inspect the README commit, remote `main`,
+image, Git tag, and GitHub Release before completing or retrying manually.
 
 Contributing
 ============
