@@ -128,8 +128,8 @@ files (ignored files are allowed). It checks out `main` if necessary and
 fast-forwards it from `main` at the `origin` push
 destination; if local `main` is ahead or has diverged, reconcile it before
 retrying. Git must be able to switch and update branches without overwriting
-local changes. If GitHub has open pull requests, the script lists them and asks
-for confirmation before continuing; without confirmation it exits. It updates
+local or ignored files. If GitHub has open pull requests, the script lists them
+and asks for confirmation before continuing; without confirmation it exits. It updates
 the `Versions` row, commits the README if it changed, and pushes `main` to
 `origin` before building from committed `HEAD`. Stable releases replace
 the listed version, while a prerelease is also listed when its version is newer

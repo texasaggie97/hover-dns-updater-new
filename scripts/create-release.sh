@@ -51,19 +51,19 @@ require_clean_worktree() {
 prepare_release() {
     local current_branch pull_requests answer
 
-    git fetch "$repository" main
+    git fetch --no-tags "$repository" main
     if ! current_branch=$(git symbolic-ref --quiet HEAD) || [[ $current_branch != refs/heads/main ]]; then
         if git show-ref --verify --quiet refs/heads/main; then
-            git checkout main
+            git checkout --no-overwrite-ignore main
         else
-            git checkout -b main FETCH_HEAD
+            git checkout --no-overwrite-ignore -b main FETCH_HEAD
         fi
     fi
     if ! git merge-base --is-ancestor HEAD FETCH_HEAD; then
         echo "Local main is ahead of or has diverged from the remote main; reconcile it before releasing." >&2
         return 1
     fi
-    git merge --ff-only FETCH_HEAD
+    git merge --ff-only --no-overwrite-ignore FETCH_HEAD
 
     if ! pull_requests=$(GH_REPO="$repository" gh api --paginate \
         'repos/{owner}/{repo}/pulls?state=open&per_page=100' \

@@ -168,6 +168,7 @@ def test_existing_remote_tag_does_not_publish(release_repo):
     result = run_release(release_repo, "1.2.3")
     assert result.returncode != 0
     assert "already exists on origin" in result.stderr
+    assert git("tag", "--list", "v1.2.3") == ""
     assert not Path(env["DOCKER_LOG"]).exists()
 
 
@@ -307,6 +308,51 @@ def test_ignored_files_do_not_block_release(release_repo):
     result = run_release(release_repo, "1.2.3")
     assert result.returncode == 0, result.stderr
     assert (repo / "ignored.txt").read_text() == "ignored\n"
+
+
+@pytest.mark.parametrize("existing_main", [True, False])
+def test_checkout_does_not_overwrite_ignored_files(release_repo, existing_main):
+    repo, env, git = release_repo
+    path = repo / "ignored.txt"
+    path.write_text("tracked on main\n")
+    git("add", "ignored.txt")
+    git("commit", "--quiet", "-m", "Add file to main")
+    git("push", "origin", "main")
+    git("checkout", "-b", "feature")
+    git("rm", "ignored.txt")
+    git("commit", "--quiet", "-m", "Remove file from feature")
+    if not existing_main:
+        git("branch", "-d", "main")
+    (repo / ".git/info/exclude").write_text("ignored.txt\n")
+    path.write_text("preserve local file\n")
+    result = run_release(release_repo, "1.2.3")
+    assert result.returncode != 0
+    assert "ignored.txt" in result.stderr
+    assert git("branch", "--show-current") == "feature"
+    assert path.read_text() == "preserve local file\n"
+    assert not Path(env["GH_API_LOG"]).exists()
+    assert not Path(env["DOCKER_LOG"]).exists()
+
+
+def test_fast_forward_does_not_overwrite_ignored_files(release_repo):
+    repo, env, git = release_repo
+    git("checkout", "-b", "remote-update")
+    path = repo / "ignored.txt"
+    path.write_text("tracked on remote\n")
+    git("add", "ignored.txt")
+    git("commit", "--quiet", "-m", "Add file on remote")
+    git("push", "origin", "HEAD:refs/heads/main")
+    git("checkout", "main")
+    (repo / ".git/info/exclude").write_text("ignored.txt\n")
+    path.write_text("preserve local file\n")
+    previous_commit = git("rev-parse", "HEAD")
+    result = run_release(release_repo, "1.2.3")
+    assert result.returncode != 0
+    assert "ignored.txt" in result.stderr
+    assert path.read_text() == "preserve local file\n"
+    assert git("rev-parse", "HEAD") == previous_commit
+    assert not Path(env["GH_API_LOG"]).exists()
+    assert not Path(env["DOCKER_LOG"]).exists()
 
 
 def test_changes_during_preparation_abort_release(release_repo):
